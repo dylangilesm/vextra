@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VEXTRA — Arquitectura Empresarial para Negocios que Crecen</title>
+  <meta name="description" content="VEXTRA combina marketing estratégico, análisis empresarial y automatización para que tengas control total de tu negocio.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header class="header" id="header" role="banner">
+    <nav class="nav container" aria-label="Navegación principal">
+      <a href="index.html" class="nav-logo" aria-label="VEXTRA - Inicio">
+        <img src="Logo_con_nombre.png" alt="VEXTRA" class="nav-logo-img">
+      </a>
+      <ul class="nav-links" role="list" id="nav-links">
+        <li><a href="#problema" class="nav-link">El Problema</a></li>
+        <li><a href="#sistema" class="nav-link">Sistema</a></li>
+        <li><a href="#pilares" class="nav-link">Pilares</a></li>
+        <li><a href="#metodologia" class="nav-link">Metodología</a></li>
+        <li><a href="#casos" class="nav-link">Casos</a></li>
+        <li><a href="#nosotros" class="nav-link">Nosotros</a></li>
+        <li><a href="#contacto" class="nav-link">Contacto</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="iniciar-sesion.html" class="btn btn-login" aria-label="Iniciar sesión en el panel de VEXTRA">Iniciar sesión</a>
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav-links">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- 1. HERO -->
+    <section class="hero" id="hero" aria-label="Inicio">
+      <div class="hero-bg">
+        <div class="hero-orb hero-orb--1"></div>
+        <div class="hero-orb hero-orb--2"></div>
+        <div class="hero-grid"></div>
+      </div>
+      <div class="container hero-content">
+        <div class="hero-badge reveal">
+          <span class="badge-dot"></span>
+          Arquitectura empresarial · Marketing · Automatización
+        </div>
+        <h1 class="hero-title reveal reveal--delay-1">
+          Arquitectura empresarial<br>
+          para negocios que<br>
+          quieren <em>crecer.</em>
+        </h1>
+        <p class="hero-subtitle reveal reveal--delay-2">
+          En VEXTRA combinamos marketing estratégico, análisis empresarial
+          y automatización para que tengas control total de tu negocio.
+        </p>
+        <div class="hero-ctas reveal reveal--delay-3">
+          <a href="#contacto" class="btn btn-primary">Agendar diagnóstico</a>
+          <a href="#sistema" class="btn btn-ghost">Ver cómo funciona</a>
+        </div>
+        <div class="hero-stats reveal reveal--delay-4">
+          <div class="stat">
+            <span class="stat-num">3</span>
+            <span class="stat-label">Pilares estratégicos</span>
+          </div>
+          <div class="stat-div"></div>
+          <div class="stat">
+            <span class="stat-num">360°</span>
+            <span class="stat-label">Visión de tu negocio</span>
+          </div>
+          <div class="stat-div"></div>
+          <div class="stat">
+            <span class="stat-num">1</span>
+            <span class="stat-label">Panel unificado</span>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- 2. EL PROBLEMA -->
+    <section class="section problema" id="problema" aria-label="El problema">
+      <div class="container">
+        <div class="section-eyebrow reveal">El problema</div>
+        <h2 class="section-title reveal reveal--delay-1">
+          La mayoría de las empresas<br>crecen sin estructura.
+        </h2>
+        <div class="problema-grid">
+          <div class="problema-item reveal reveal--delay-1">
+            <div class="problema-icon">
+              <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <circle cx="24" cy="24" r="23" stroke="#266247" stroke-width="1.5"/>
+                <path d="M16 32l4-8 4 4 4-6 4 10" stroke="#266247" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Marketing sin estrategia</h3>
+            <p>Inversión en publicidad sin dirección clara, sin análisis y sin retorno medible.</p>
+          </div>
+          <div class="problema-item reveal reveal--delay-2">
+            <div class="problema-icon">
+              <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <circle cx="24" cy="24" r="23" stroke="#266247" stroke-width="1.5"/>
+                <rect x="14" y="18" width="20" height="14" rx="2" stroke="#266247" stroke-width="1.8"/>
+                <path d="M14 23h20M19 18v-4M29 18v-4" stroke="#266247" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Datos dispersos</h3>
+            <p>Información crítica del negocio fragmentada en planillas, apps y conversaciones.</p>
+          </div>
+          <div class="problema-item reveal reveal--delay-3">
+            <div class="problema-icon">
+              <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <circle cx="24" cy="24" r="23" stroke="#266247" stroke-width="1.5"/>
+                <path d="M16 34V26M22 34V20M28 34V24M34 34V16" stroke="#266247" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Campañas sin análisis</h3>
+            <p>Acciones de comunicación desconectadas de los objetivos reales del negocio.</p>
+          </div>
+          <div class="problema-item reveal reveal--delay-4">
+            <div class="problema-icon">
+              <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <circle cx="24" cy="24" r="23" stroke="#266247" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="6" stroke="#266247" stroke-width="1.8"/>
+                <path d="M24 14v3M24 31v3M14 24h3M31 24h3" stroke="#266247" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Decisiones sin información</h3>
+            <p>Gerencias que toman decisiones importantes basadas en intuición, no en datos.</p>
+          </div>
+        </div>
+        <div class="problema-close reveal">
+          <div class="problema-line"></div>
+          <p>"Sin estructura, crecer es improvisar."</p>
+          <div class="problema-line"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. EL SISTEMA VEXTRA -->
+    <section class="section sistema" id="sistema" aria-label="El sistema VEXTRA">
+      <div class="sistema-bg-glow"></div>
+      <div class="container">
+        <div class="section-eyebrow reveal">El sistema</div>
+        <h2 class="section-title reveal reveal--delay-1">
+          Creamos la arquitectura<br>empresarial de tu negocio.
+        </h2>
+        <p class="section-desc reveal reveal--delay-2">
+          VEXTRA no es una agencia de marketing. Somos el sistema que estructura,
+          conecta y potencia todas las partes de tu empresa para que funcionen como un todo.
+        </p>
+        <div class="sistema-chips reveal reveal--delay-3">
+          <div class="pilar-chip">
+            <span class="pilar-num">01</span>Marketing estratégico
+          </div>
+          <div class="pilar-chip">
+            <span class="pilar-num">02</span>Plataforma empresarial
+          </div>
+          <div class="pilar-chip">
+            <span class="pilar-num">03</span>Automatización inteligente
+          </div>
+        </div>
+        <div class="sistema-visual reveal reveal--delay-4" aria-hidden="true">
+          <svg class="sistema-rings" viewBox="0 0 500 500">
+            <circle cx="250" cy="250" r="200" stroke="#143726" stroke-width="1" stroke-dasharray="3 9" fill="none"/>
+            <circle cx="250" cy="250" r="145" stroke="#0A3524" stroke-width="1" fill="none"/>
+            <circle cx="250" cy="250" r="80" stroke="#143726" stroke-width="1.5" stroke-dasharray="6 6" fill="none"/>
+          </svg>
+          <div class="sistema-center-node">
+            <span class="sistema-logo-v">V</span>
+            <span class="sistema-label">SISTEMA</span>
+          </div>
+          <div class="sistema-node sistema-node--1">
+            <span>Marketing</span>
+          </div>
+          <div class="sistema-node sistema-node--2">
+            <span>Plataforma</span>
+          </div>
+          <div class="sistema-node sistema-node--3">
+            <span>Automatización</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. LOS 3 PILARES -->
+    <section class="section pilares" id="pilares" aria-label="Los 3 pilares">
+      <div class="container">
+        <div class="section-eyebrow reveal">Los 3 pilares</div>
+        <h2 class="section-title reveal reveal--delay-1">Tres pilares.<br>Un sistema integrado.</h2>
+        <div class="pilares-list">
+
+          <article class="pilar-card reveal">
+            <div class="pilar-card-header">
+              <div class="pilar-card-num">01</div>
+              <div class="pilar-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none">
+                  <path d="M8 48l14-16 10 8 14-18 10 26" stroke="#266247" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M8 56h48" stroke="#266247" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="pilar-card-title">Marketing Estratégico</h3>
+            <p class="pilar-card-desc">Diseñamos la estrategia que conecta tu negocio con tus clientes. No publicamos por publicar: analizamos, planificamos y ejecutamos cada acción con métricas reales.</p>
+            <ul class="pilar-card-list" role="list">
+              <li>Estrategia de contenido y marca</li>
+              <li>Gestión de campañas digitales</li>
+              <li>Análisis de audiencias y mercado</li>
+              <li>Posicionamiento y comunicación</li>
+            </ul>
+            <div class="pilar-card-slogan">Somos el medio de comunicación entre tu negocio y tu cliente.</div>
+          </article>
+
+          <article class="pilar-card pilar-card--mid reveal reveal--delay-1">
+            <div class="pilar-card-header">
+              <div class="pilar-card-num">02</div>
+              <div class="pilar-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none">
+                  <rect x="8" y="12" width="48" height="40" rx="4" stroke="#266247" stroke-width="2"/>
+                  <path d="M8 24h48" stroke="#266247" stroke-width="1.5"/>
+                  <rect x="16" y="32" width="14" height="12" rx="2" fill="#143726"/>
+                  <rect x="34" y="36" width="14" height="8" rx="2" fill="#0A3524"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="pilar-card-title">Plataforma Empresarial</h3>
+            <p class="pilar-card-desc">Un panel donde ves todo tu negocio en un solo lugar. Tomás decisiones con datos reales, no con suposiciones. Tu empresa, centralizada y clara.</p>
+            <ul class="pilar-card-list" role="list">
+              <li>Control de ingresos y gastos</li>
+              <li>Seguimiento de campañas activas</li>
+              <li>Gestión de inventario</li>
+              <li>Panel de empleados y equipos</li>
+            </ul>
+            <div class="pilar-card-slogan">Tu empresa, clara y organizada en un solo tablero.</div>
+          </article>
+
+          <article class="pilar-card reveal reveal--delay-2">
+            <div class="pilar-card-header">
+              <div class="pilar-card-num">03</div>
+              <div class="pilar-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none">
+                  <circle cx="32" cy="32" r="22" stroke="#266247" stroke-width="2"/>
+                  <circle cx="32" cy="32" r="8" fill="#143726"/>
+                  <path d="M32 10v6M32 48v6M10 32h6M48 32h6" stroke="#266247" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M17 17l4 4M43 43l4 4M17 47l4-4M43 21l4-4" stroke="#266247" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="pilar-card-title">Automatización Inteligente</h3>
+            <p class="pilar-card-desc">Automatizamos procesos con tecnología N8N para que tu negocio funcione mejor. Integramos tus herramientas y eliminamos tareas repetitivas que roban tiempo.</p>
+            <ul class="pilar-card-list" role="list">
+              <li>Flujos de trabajo automatizados</li>
+              <li>Integración entre plataformas</li>
+              <li>Reportes y alertas automáticas</li>
+              <li>CRM y seguimiento de clientes</li>
+            </ul>
+            <div class="pilar-card-slogan">Menos tareas repetitivas, más decisiones estratégicas.</div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. EL PANEL VISUAL -->
+    <section class="section panel-section" id="panel" aria-label="Panel empresarial">
+      <div class="panel-bg-glow"></div>
+      <div class="container">
+        <div class="panel-layout">
+          <div class="panel-text">
+            <div class="section-eyebrow reveal">Panel empresarial</div>
+            <h2 class="section-title reveal reveal--delay-1">Tomar decisiones<br>sin datos es apostar.</h2>
+            <p class="section-desc reveal reveal--delay-2">Con VEXTRA tenés toda la información en tiempo real. Ingresos, campañas, inventario y equipo, todo en un solo lugar diseñado para que actúes con certeza.</p>
+            <a href="#contacto" class="btn btn-primary reveal reveal--delay-3">Quiero acceso al panel</a>
+          </div>
+          <div class="panel-mockup reveal reveal--delay-2" aria-label="Vista previa del panel de control VEXTRA">
+            <div class="mockup-chrome">
+              <div class="chrome-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="chrome-url">app.vextra.com/dashboard</span>
+            </div>
+            <div class="mockup-body">
+              <!-- Sidebar -->
+              <div class="mockup-sidebar" aria-hidden="true">
+                <div class="mock-logo">
+                  <img class="mock-logo-v" src="Logo_con_nombre.png" alt="VEXTRA"></img>
+                </div>
+                <div class="mock-section-label">Principal</div>
+                <nav class="mock-nav">
+                  <div class="mock-nav-item mock-nav-item--active">
+                    <span class="mock-nav-icon"></span>Resumen
+                  </div>
+                  <div class="mock-nav-item">
+                    <span class="mock-nav-icon"></span>Inventario
+                  </div>
+                  <div class="mock-nav-item">
+                    <span class="mock-nav-icon"></span>Campañas
+                  </div>
+                  <div class="mock-nav-item">
+                    <span class="mock-nav-icon"></span>Empleados
+                  </div>
+                </nav>
+                <div class="mock-section-label" style="margin-top:6px">Acciones</div>
+                <nav class="mock-nav">
+                  <div class="mock-nav-item">
+                    <span class="mock-nav-icon"></span>C. Ingreso
+                  </div>
+                  <div class="mock-nav-item">
+                    <span class="mock-nav-icon"></span>C. Gasto
+                  </div>
+                  <div class="mock-nav-item">
+                    <span class="mock-nav-icon"></span>Ventas
+                  </div>
+                </nav>
+                <div class="mock-logout">Cerrar Sesión</div>
+              </div>
+              <!-- Main content -->
+              <div class="mockup-main" aria-hidden="true">
+                <div class="mock-topbar">
+                  <div>
+                    <div class="mock-greeting">Hola, empresa</div>
+                    <div class="mock-greeting-sub">Así van tus números este mes</div>
+                  </div>
+                  <div class="mock-date-btn">📅 marzo de 2026</div>
+                </div>
+                <!-- KPI cards -->
+                <div class="mock-kpi-row">
+                  <div class="mock-kpi mock-kpi--ing">
+                    <span class="mock-kpi-label">Ingresos Totales</span>
+                    <span class="mock-kpi-val mock-kpi-val--ing">$284K</span>
+                    <span class="mock-kpi-delta">Sin movimientos aún</span>
+                  </div>
+                  <div class="mock-kpi mock-kpi--gasto">
+                    <span class="mock-kpi-label">Gastos</span>
+                    <span class="mock-kpi-val mock-kpi-val--gasto">$38K</span>
+                    <span class="mock-kpi-delta">Este mes</span>
+                  </div>
+                  <div class="mock-kpi mock-kpi--balance">
+                    <span class="mock-kpi-label">Balance Neto</span>
+                    <span class="mock-kpi-val mock-kpi-val--balance">$246K</span>
+                    <span class="mock-kpi-delta">↑ A favor</span>
+                  </div>
+                </div>
+                <!-- Últimos movimientos -->
+                <div class="mock-movimientos">
+                  <div class="mock-section-header">
+                    <span class="mock-section-title">Últimos movimientos</span>
+                    <span class="mock-section-link">Ver ventas →</span>
+                  </div>
+                  <div class="mock-empty">Aún no hay movimientos este mes.</div>
+                </div>
+                <!-- Evolución mensual -->
+                <div class="mock-chart">
+                  <div class="mock-chart-header">
+                    <span class="mock-section-title">Evolución mensual</span>
+                    <div class="mock-chart-legend">
+                      <div class="mock-legend-item">
+                        <div class="mock-legend-dot mock-legend-dot--ing"></div>Ingresos
+                      </div>
+                      <div class="mock-legend-item">
+                        <div class="mock-legend-dot mock-legend-dot--gasto"></div>Gastos
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mock-chart-area">
+                    <div class="mock-bar mock-bar--ing" style="height:30%"></div>
+                    <div class="mock-bar mock-bar--gasto" style="height:15%"></div>
+                    <div class="mock-bar mock-bar--ing" style="height:45%"></div>
+                    <div class="mock-bar mock-bar--gasto" style="height:20%"></div>
+                    <div class="mock-bar mock-bar--ing" style="height:38%"></div>
+                    <div class="mock-bar mock-bar--gasto" style="height:18%"></div>
+                    <div class="mock-bar mock-bar--active-ing" style="height:75%"></div>
+                    <div class="mock-bar mock-bar--active-gasto" style="height:28%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. METODOLOGÍA -->
+    <section class="section metodologia" id="metodologia" aria-label="Metodología">
+      <div class="container">
+        <div class="section-eyebrow reveal">Cómo trabajamos</div>
+        <h2 class="section-title reveal reveal--delay-1">Un método claro,<br>resultados medibles.</h2>
+        <div class="metodo-steps">
+          <div class="metodo-step reveal reveal--delay-1">
+            <div class="step-num-wrap">
+              <div class="step-num">01</div>
+              <div class="step-line"></div>
+            </div>
+            <div class="step-body">
+              <h3>Diagnóstico empresarial</h3>
+              <p>Analizamos tu negocio en profundidad: estructura, procesos, mercado y objetivos. Sin diagnóstico real, no hay estrategia real.</p>
+            </div>
+          </div>
+          <div class="metodo-step reveal reveal--delay-2">
+            <div class="step-num-wrap">
+              <div class="step-num">02</div>
+              <div class="step-line"></div>
+            </div>
+            <div class="step-body">
+              <h3>Arquitectura estratégica</h3>
+              <p>Diseñamos el sistema completo: qué comunicar, qué automatizar, qué medir. Todo con un eje central: el crecimiento estructurado.</p>
+            </div>
+          </div>
+          <div class="metodo-step reveal reveal--delay-3">
+            <div class="step-num-wrap">
+              <div class="step-num">03</div>
+              <div class="step-line"></div>
+            </div>
+            <div class="step-body">
+              <h3>Implementación del sistema</h3>
+              <p>Ejecutamos cada componente del plan: marketing, plataforma y automatización. Con cronogramas claros y entregables concretos.</p>
+            </div>
+          </div>
+          <div class="metodo-step reveal reveal--delay-4">
+            <div class="step-num-wrap">
+              <div class="step-num">04</div>
+            </div>
+            <div class="step-body">
+              <h3>Optimización continua</h3>
+              <p>Medimos, analizamos y mejoramos de forma permanente. El sistema VEXTRA evoluciona con tu negocio.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. CASOS -->
+    <section class="section casos" id="casos" aria-label="Casos y proyectos">
+      <div class="container">
+        <div class="section-eyebrow reveal">Casos</div>
+        <h2 class="section-title reveal reveal--delay-1">Proyectos que<br>demuestran el sistema.</h2>
+        <div class="casos-grid">
+          <article class="caso-card caso-featured reveal" aria-label="Caso: Jazz Bar">
+            <div class="caso-tag">Gastronomía · Entretenimiento</div>
+            <h3>Jazz Bar</h3>
+            <p>Implementamos la arquitectura completa de comunicación y análisis. Estrategia de contenido, gestión de redes y panel de seguimiento de ingresos y eventos.</p>
+            <div class="caso-metrics">
+              <div class="caso-metric">
+                <span class="m-val">+340%</span>
+                <span class="m-label">Alcance orgánico</span>
+              </div>
+              <div class="caso-metric">
+                <span class="m-val">+65%</span>
+                <span class="m-label">Ocupación promedio</span>
+              </div>
+            </div>
+            <span class="caso-status">● Activo</span>
+          </article>
+          <article class="caso-card reveal reveal--delay-1" aria-label="Auditorías empresariales">
+            <div class="caso-tag">Análisis empresarial</div>
+            <h3>Auditorías de negocio</h3>
+            <p>Diagnósticos completos para empresas que necesitan entender su estructura antes de escalar. Mapeamos procesos, datos e ineficiencias.</p>
+            <span class="caso-status">● Disponible</span>
+          </article>
+          <article class="caso-card reveal reveal--delay-2" aria-label="Próximos proyectos">
+            <div class="caso-tag">En desarrollo</div>
+            <h3>Proyectos actuales</h3>
+            <p>Trabajamos con negocios de distintos sectores implementando el sistema VEXTRA. Cada proyecto comienza con un diagnóstico personalizado.</p>
+            <a href="#contacto" class="caso-cta">Ser el próximo →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. SOBRE VEXTRA -->
+    <section class="section nosotros" id="nosotros" aria-label="Sobre VEXTRA">
+      <div class="nosotros-glow"></div>
+      <div class="container">
+        <div class="nosotros-layout">
+          <div class="nosotros-left">
+            <div class="section-eyebrow reveal">Sobre VEXTRA</div>
+            <h2 class="section-title reveal reveal--delay-1">Nació con una<br>idea simple.</h2>
+            <blockquote class="nosotros-quote reveal reveal--delay-2">
+              "Las empresas necesitan estructura para crecer."
+            </blockquote>
+            <p class="section-desc reveal reveal--delay-3">VEXTRA surge de ver negocios con potencial real estancados por falta de organización interna. No falta de ganas, no falta de recursos: falta de arquitectura.</p>
+            <p class="section-desc reveal reveal--delay-3">Creamos un sistema que integra la comunicación externa con el control interno, para que los dueños y gerentes tomen decisiones con certeza.</p>
+          </div>
+          <div class="nosotros-values reveal reveal--delay-2">
+            <div class="value-item">
+              <div class="value-arrow">→</div>
+              <div>
+                <h4>Estructura antes que acción</h4>
+                <p>Planificamos antes de ejecutar. Siempre.</p>
+              </div>
+            </div>
+            <div class="value-item">
+              <div class="value-arrow">→</div>
+              <div>
+                <h4>Datos por encima de opiniones</h4>
+                <p>Las decisiones se toman con información, no con suposiciones.</p>
+              </div>
+            </div>
+            <div class="value-item">
+              <div class="value-arrow">→</div>
+              <div>
+                <h4>Sistemas que perduran</h4>
+                <p>Construimos procesos que funcionan sin depender de una persona.</p>
+              </div>
+            </div>
+            <div class="value-item">
+              <div class="value-arrow">→</div>
+              <div>
+                <h4>Transparencia total</h4>
+                <p>Cada acción, cada métrica, cada resultado: visible y trazable.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. CONTACTO / CTA FINAL -->
+    <section class="section contacto" id="contacto" aria-label="Contacto">
+      <div class="contacto-bg">
+        <div class="contacto-orb c-orb--1"></div>
+        <div class="contacto-orb c-orb--2"></div>
+      </div>
+      <div class="container">
+        <div class="contacto-header">
+          <div class="section-eyebrow reveal">Contacto</div>
+          <h2 class="section-title contacto-title reveal reveal--delay-1">
+            Si tu negocio quiere crecer<br>con estructura,<br><em>VEXTRA puede ayudarte.</em>
+          </h2>
+          <p class="section-desc reveal reveal--delay-2">Agendá un diagnóstico gratuito. Analizamos tu negocio y te mostramos cómo el sistema VEXTRA puede transformarlo.</p>
+        </div>
+        <div class="contacto-layout">
+          <form class="contacto-form reveal reveal--delay-2" id="contacto-form" novalidate aria-label="Formulario de contacto">
+            <div class="form-row">
+              <div class="form-field">
+                <label for="nombre">Nombre completo</label>
+                <input type="text" id="nombre" name="nombre" placeholder="Tu nombre" autocomplete="name" required>
+                <span class="field-error" role="alert" id="error-nombre"></span>
+              </div>
+              <div class="form-field">
+                <label for="empresa">Empresa</label>
+                <input type="text" id="empresa" name="empresa" placeholder="Tu empresa" autocomplete="organization">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="email">Correo electrónico</label>
+                <input type="email" id="email" name="email" placeholder="tu@correo.com" autocomplete="email" required>
+                <span class="field-error" role="alert" id="error-email"></span>
+              </div>
+              <div class="form-field">
+                <label for="telefono">Teléfono <span class="optional">(opcional)</span></label>
+                <input type="tel" id="telefono" name="telefono" placeholder="+54 9..." autocomplete="tel">
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="mensaje">¿Qué desafío tiene tu negocio hoy?</label>
+              <textarea id="mensaje" name="mensaje" placeholder="Contanos brevemente qué está pasando en tu empresa..." rows="4" required></textarea>
+              <span class="field-error" role="alert" id="error-mensaje"></span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Agendar diagnóstico gratuito</button>
+            <div class="form-success" id="form-success" aria-live="polite" hidden>
+              ✓ Mensaje enviado. Nos ponemos en contacto en menos de 24hs.
+            </div>
+          </form>
+          <div class="contacto-info reveal reveal--delay-3">
+            <div class="info-block">
+              <h4>¿Qué incluye el diagnóstico?</h4>
+              <ul role="list">
+                <li>Análisis de tu estructura actual</li>
+                <li>Identificación de puntos críticos</li>
+                <li>Propuesta personalizada del sistema</li>
+                <li>Sin compromiso ni costo</li>
+              </ul>
+            </div>
+            <div class="info-block">
+              <h4>¿Ya sos cliente?</h4>
+              <p>Ingresá a tu sistema de control empresarial.</p>
+              <a href="iniciar-sesion.html" class="btn btn-outline" aria-label="Iniciar sesión en el panel de VEXTRA">Iniciar sesión →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" aria-label="VEXTRA - Inicio">
+          <img src="Logo_con_nombre.png" alt="VEXTRA" class="footer-logo-img">
+        </a>
+        <p>Arquitectura empresarial para negocios que quieren crecer.</p>
+      </div>
+      <nav class="footer-nav" aria-label="Navegación del pie de página">
+        <div class="footer-col">
+          <h5>Servicios</h5>
+          <a href="#pilares">Marketing estratégico</a>
+          <a href="#pilares">Plataforma empresarial</a>
+          <a href="#pilares">Automatización</a>
+        </div>
+        <div class="footer-col">
+          <h5>Empresa</h5>
+          <a href="#nosotros">Sobre VEXTRA</a>
+          <a href="#metodologia">Metodología</a>
+          <a href="#casos">Casos</a>
+        </div>
+        <div class="footer-col">
+          <h5>Acceso</h5>
+          <a href="iniciar-sesion.html">Iniciar sesión</a>
+          <a href="#contacto">Agendar diagnóstico</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <span>© 2025 VEXTRA. Todos los derechos reservados.</span>
+        <span>Arquitectura empresarial</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
