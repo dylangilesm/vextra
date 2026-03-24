@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Campañas — VEXTRA</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Navegación de la aplicación">
+    <a href="dashboard.html" class="sidebar-logo"><img src="Logo_con_nombre.png" alt="VEXTRA"></a>
+
+    <span class="sidebar-section-label">Principal</span>
+
+    <nav class="nav-links">
+      <a href="dashboard.html">
+        <span class="nav-icon" aria-hidden="true">📊</span>
+        Resumen del Mes
+      </a>
+      <a href="inventario.html">
+        <span class="nav-icon" aria-hidden="true">📦</span>
+        Mi Inventario
+      </a>
+      <a href="marketing.html" class="active" aria-current="page">
+        <span class="nav-icon" aria-hidden="true">🚀</span>
+        Mis Campañas
+      </a>
+      <a href="empleados.html">
+        <span class="nav-icon" aria-hidden="true">👥</span>
+        Empleados
+      </a>
+    </nav>
+
+    <span class="sidebar-section-label">Acciones</span>
+
+    <nav class="nav-links">
+      <a href="dashboard.html" onclick="">
+        <span class="nav-icon" aria-hidden="true">📈</span>
+        Cargar Ingreso
+      </a>
+      <a href="dashboard.html">
+        <span class="nav-icon" aria-hidden="true">📉</span>
+        Cargar Gasto
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <nav class="nav-links">
+        <a href="iniciarsesion.html" class="nav-danger">
+          <span class="nav-icon" aria-hidden="true">🚪</span>
+          Cerrar Sesión
+        </a>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <div class="app-main">
+
+    <header class="app-topbar" role="banner">
+      <div>
+        <h1>Resultados de Marketing 🚀</h1>
+        <p class="topbar-greeting">Tus anuncios convertidos en ventas reales</p>
+      </div>
+      <div class="topbar-meta">
+        <button
+          class="btn-campaign"
+          onclick="alert('Se enviará un aviso a tu equipo para planificar una nueva campaña publicitaria.')"
+          aria-label="Solicitar nueva campaña"
+        >
+          + Solicitar campaña
+        </button>
+      </div>
+    </header>
+
+    <main class="page-content" role="main">
+
+      <!-- KPIs DE MARKETING -->
+      <section aria-labelledby="marketing-kpi-heading">
+        <h2 id="marketing-kpi-heading" class="visually-hidden">Métricas de marketing del mes</h2>
+
+        <div class="kpi-grid">
+          <article class="kpi-card kpi-card--invest">
+            <div class="kpi-header">
+              <span class="kpi-label">Invertido en anuncios</span>
+              <div class="kpi-icon" aria-hidden="true">💸</div>
+            </div>
+            <p class="kpi-value">$45.000</p>
+            <span class="kpi-trend kpi-trend--up">Este mes</span>
+          </article>
+
+          <article class="kpi-card kpi-card--return">
+            <div class="kpi-header">
+              <span class="kpi-label">Ventas por anuncios</span>
+              <div class="kpi-icon" aria-hidden="true">🛍️</div>
+            </div>
+            <p class="kpi-value">$180.000</p>
+            <span class="kpi-trend kpi-trend--up">↑ 18% vs mes anterior</span>
+          </article>
+
+          <article class="kpi-card kpi-card--roi">
+            <div class="kpi-header">
+              <span class="kpi-label">Rentabilidad (ROI)</span>
+              <div class="kpi-icon" aria-hidden="true">📊</div>
+            </div>
+            <p class="kpi-value">×4.0</p>
+            <span class="kpi-trend kpi-trend--up">Excelente rendimiento</span>
+          </article>
+        </div>
+      </section>
+
+      <!-- GRÁFICO DE CLICS -->
+      <section class="chart-card" aria-labelledby="clicks-chart-heading">
+        <div class="chart-card-header">
+          <h2 id="clicks-chart-heading">Clics generados por campaña</h2>
+          <div class="chart-legend" aria-hidden="true">
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--color-accent-500);"></div>
+              Clics a WhatsApp
+            </div>
+          </div>
+        </div>
+        <div class="chart-container" style="height: 200px;">
+          <canvas id="clicksChart" aria-label="Gráfico de clics por campaña" role="img"></canvas>
+        </div>
+      </section>
+
+      <!-- LISTA DE CAMPAÑAS -->
+      <section class="campaigns-card" aria-labelledby="campaigns-heading">
+        <div class="campaigns-card-header">
+          <h2 id="campaigns-heading">Tus Anuncios Actuales</h2>
+        </div>
+
+        <article class="campaign-row">
+          <div class="campaign-info">
+            <div
+              class="campaign-thumb"
+              style="background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-600));"
+              aria-hidden="true"
+            >
+              IMG
+            </div>
+            <div class="campaign-details">
+              <h4>Promo Herramientas de Verano</h4>
+              <span class="badge badge-active">● Activa</span>
+            </div>
+          </div>
+          <div class="campaign-metrics" aria-label="Métricas de la campaña">
+            <div class="metric-item">
+              <p class="metric-label">Inversión diaria</p>
+              <span class="metric-value">$1.500</span>
+            </div>
+            <div class="metric-item">
+              <p class="metric-label">Clics al WhatsApp</p>
+              <span class="metric-value">142</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="campaign-row">
+          <div class="campaign-info">
+            <div
+              class="campaign-thumb"
+              style="background: linear-gradient(135deg, var(--color-neutral-400), var(--color-neutral-600));"
+              aria-hidden="true"
+            >
+              VID
+            </div>
+            <div class="campaign-details">
+              <h4>Liquidación Stock Pinturas</h4>
+              <span class="badge badge-ended">● Finalizada</span>
+            </div>
+          </div>
+          <div class="campaign-metrics" aria-label="Métricas de la campaña">
+            <div class="metric-item">
+              <p class="metric-label">Inversión total</p>
+              <span class="metric-value">$20.000</span>
+            </div>
+            <div class="metric-item">
+              <p class="metric-label">Clics al WhatsApp</p>
+              <span class="metric-value">310</span>
+            </div>
+          </div>
+        </article>
+
+      </section>
+
+    </main>
+  </div>
+
+  <style>
+    .visually-hidden {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const ctx = document.getElementById('clicksChart');
+      if (!ctx || typeof Chart === 'undefined') return;
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+          datasets: [{
+            label: 'Clics',
+            data: [68, 95, 112, 177],
+            borderColor: 'rgb(168, 85, 247)',
+            backgroundColor: 'rgba(168, 85, 247, 0.08)',
+            borderWidth: 2.5,
+            pointBackgroundColor: 'rgb(168, 85, 247)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            tension: 0.4,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(4, 27, 16, 0.95)',
+              titleFont: { family: 'Outfit, DM Sans, sans-serif', weight: '600', size: 13 },
+              bodyFont: { family: 'DM Sans, sans-serif', size: 13 },
+              padding: 12,
+              cornerRadius: 8,
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: { color: '#94a3b8', font: { family: 'DM Sans, sans-serif', size: 12 } }
+            },
+            y: {
+              grid: { color: 'rgba(38,98,71,0.1)' },
+              border: { display: false },
+              ticks: { color: '#94a3b8', font: { family: 'DM Sans, sans-serif', size: 12 } }
+            }
+          }
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

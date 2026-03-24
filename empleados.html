@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empleados — VEXTRA</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="empleados.css">
+  <script>
+/* === VEXTRA-DB INLINE === */
+/* ================================================================
+   VEXTRA — CAPA DE DATOS CENTRALIZADA (vextra-db.js)
+   ================================================================
+
+   Este archivo es el ÚNICO lugar que habla con el almacenamiento.
+   Todas las páginas importan funciones de acá.
+
+   CUANDO LLEGUE EL BACKEND:
+   Solo tenés que editar este archivo. Ninguna página cambia.
+   Cada función tiene marcado exactamente qué endpoint HTTP
+   reemplaza a cada bloque de localStorage.
+
+   ESTRUCTURA DE DATOS EN localStorage:
+   ┌─────────────────────────────────────────────────────────────┐
+   │  "vextra_movimientos"  →  [ ...movimientos ]                │
+   │  "vextra_ventas"       →  [ ...ventas ]                     │
+   │  "vextra_productos"    →  [ ...productos ]                  │
+   │  "vextra_empleados"    →  [ ...empleados ]                  │
+   └─────────────────────────────────────────────────────────────┘
+================================================================ */
+
+// Asignación a window para que sea accesible desde cualquier script de la página
+window.VEXTRADB = (() => {
+
+  /* --------------------------------------------------------------
+     HELPERS INTERNOS — no se exportan
+  -------------------------------------------------------------- */
+  function leer(clave) {
+    try {
+      return JSON.parse(localStorage.getItem(clave)) || [];
+    } catch {
+      console.error('[VEXTRADB] Error leyendo', clave);
+      return [];
+    }
+  }
+
+  function escribir(clave, datos) {
+    try {
+      localStorage.setItem(clave, JSON.stringify(datos));
+      return true;
+    } catch (e) {
+      // localStorage lleno (límite ~5MB) u otro error
+      console.error('[VEXTRADB] Error escribiendo', clave, e);
+      return false;
+    }
+  }
+
+  function idUnico() {
+    // Genera un ID numérico único basado en timestamp + random
+    // El backend reemplaza esto con el ID autoincremental de SQL
+    return Date.now() + Math.floor(Math.random() * 1000);
+  }
+
+  function mesAnioKey(fecha) {
+    // Devuelve "2026-02" para agrupar por mes
+    const d = fecha ? new Date(fecha) : new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function mesAnioLabel(fecha) {
+    const d = fecha ? new Date(fecha) : new Date();
+    return d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  }
+
+
+  /* ==============================================================
+     MÓDULO: MOVIMIENTOS
+     (ingresos y gastos manuales cargados desde el dashboard)
+  ============================================================== */
+  const Movimientos = {
+
+    /* Clave en localStorage */
+    CLAVE: 'vextra_movimientos',
+
+    /* ----------------------------------------------------------
+       LEER TODOS
+       BACKEND → GET /api/movimientos
+    ---------------------------------------------------------- */
+    todos() {
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       LEER POR MES  (ej: "2026-02")
+       BACKEND → GET /api/movimientos?mes=2026-02
+    ---------------------------------------------------------- */
+    delMes(mesAnio) {
+      const todos = this.todos();
+      return todos.filter(m => {
+        const d = new Date(m.fechaISO);
+        return mesAnioKey(d) === mesAnio;
+      });
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR NUEVO MOVIMIENTO
+       BACKEND → POST /api/movimientos
+       Body: { tipo, monto, concepto, fecha }
+    ---------------------------------------------------------- */
+    guardar({ tipo, monto, concepto, fecha }) {
+      const todos = this.todos();
+      const fechaObj = new Date(fecha + 'T12:00:00');
+
+      const nuevo = {
+        id:        idUnico(),
+        tipo,                          // "ingreso" | "gasto"
+        monto:     Number(monto),
+        concepto,
+        fecha:     fechaObj.toLocaleDateString('es-AR'),
+        fechaISO:  fechaObj.toISOString(),
+        mes:       mesAnioKey(fechaObj),
+        creadoEn:  new Date().toISOString(),
+      };
+
+      todos.push(nuevo);
+      escribir(this.CLAVE, todos);
+      return nuevo;
+    },
+
+    /* ----------------------------------------------------------
+       ELIMINAR  (soft delete)
+       BACKEND → DELETE /api/movimientos/:id
+    ---------------------------------------------------------- */
+    eliminar(id) {
+      const todos = this.todos().filter(m => m.id !== id);
+      escribir(this.CLAVE, todos);
+    },
+
+    /* ----------------------------------------------------------
+       CALCULAR RESUMEN DEL MES
+       BACKEND → GET /api/movimientos/resumen?mes=2026-02
+       Retorna: { ingresos, gastos, balance }
+    ---------------------------------------------------------- */
+    resumenMes(mesAnio) {
+      const movs = this.delMes(mesAnio);
+
+      const ingresos = movs
+        .filter(m => m.tipo === 'ingreso')
+        .reduce((s, m) => s + m.monto, 0);
+
+      const gastos = movs
+        .filter(m => m.tipo === 'gasto')
+        .reduce((s, m) => s + m.monto, 0);
+
+      return {
+        ingresos,
+        gastos,
+        balance: ingresos - gastos,
+        cantidad: movs.length,
+      };
+    },
+
+    /* ----------------------------------------------------------
+       ÚLTIMOS N MESES para el gráfico
+       BACKEND → GET /api/movimientos/historial?meses=4
+       Retorna array con { label, ingresos, gastos } por mes
+    ---------------------------------------------------------- */
+    ultimosMeses(n = 4) {
+      const hoy = new Date();
+      const resultado = [];
+
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+        const key   = mesAnioKey(d);
+        const label = d.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
+        const res   = this.resumenMes(key);
+        resultado.push({ label, key, ...res });
+      }
+
+      return resultado;
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: VENTAS
+     (ventas rápidas registradas desde el inventario)
+  ============================================================== */
+  const Ventas = {
+
+    CLAVE: 'vextra_ventas',
+
+    /* ----------------------------------------------------------
+       LEER TODAS
+       BACKEND → GET /api/ventas
+    ---------------------------------------------------------- */
+    todas() {
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       LEER DE UN DÍA  (fecha: Date object)
+       BACKEND → GET /api/ventas?fecha=2026-02-23
+    ---------------------------------------------------------- */
+    delDia(fecha) {
+      const fechaStr = fecha.toLocaleDateString('es-AR');
+      return this.todas().filter(v => v.fecha === fechaStr && !v.anulada);
+    },
+
+    /* ----------------------------------------------------------
+       LEER DEL MES ACTUAL (para sumar al dashboard)
+       BACKEND → GET /api/ventas?mes=2026-02
+    ---------------------------------------------------------- */
+    delMes(mesAnio) {
+      return this.todas().filter(v => {
+        const d = new Date(v.fechaISO);
+        return mesAnioKey(d) === mesAnio && !v.anulada;
+      });
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR NUEVA VENTA
+       BACKEND → POST /api/ventas
+       Body: { productoId, nombre, precio, cantidad, metodo, nota }
+    ---------------------------------------------------------- */
+    guardar({ productoId, nombre, precio, cantidad, metodo, nota }) {
+      const todas = this.todas();
+      const ahora = new Date();
+
+      const nueva = {
+        id:          idUnico(),
+        productoId,
+        nombre,
+        precio:      Number(precio),
+        cantidad:    Number(cantidad),
+        total:       Number(precio) * Number(cantidad),
+        metodo,
+        nota:        nota || '',
+        fecha:       ahora.toLocaleDateString('es-AR'),
+        fechaISO:    ahora.toISOString(),
+        hora:        ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+        mes:         mesAnioKey(ahora),
+        anulada:     false,
+        creadoEn:    ahora.toISOString(),
+      };
+
+      todas.push(nueva);
+      escribir(this.CLAVE, todas);
+      return nueva;
+    },
+
+    /* ----------------------------------------------------------
+       ANULAR VENTA (no se borra, queda para auditoría)
+       BACKEND → PATCH /api/ventas/:id/anular
+    ---------------------------------------------------------- */
+    anular(id) {
+      const todas = this.todas();
+      const venta = todas.find(v => v.id === id);
+      if (venta) {
+        venta.anulada   = true;
+        venta.anuladaEn = new Date().toISOString();
+        escribir(this.CLAVE, todas);
+      }
+      return venta;
+    },
+
+    /* ----------------------------------------------------------
+       TOTAL DE VENTAS DEL MES (en $ para sumarlo al dashboard)
+       BACKEND → GET /api/ventas/total?mes=2026-02
+    ---------------------------------------------------------- */
+    totalMes(mesAnio) {
+      return this.delMes(mesAnio).reduce((s, v) => s + v.total, 0);
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: PRODUCTOS / INVENTARIO
+  ============================================================== */
+  const Productos = {
+
+    CLAVE: 'vextra_productos',
+
+    /* Datos iniciales — se cargan solo la primera vez */
+    INICIALES: [
+      { id: 'FER-001', nombre: 'Taladro Percutor 750W',              precio: 85000, stock: 24, estado: 'optimo'   },
+      { id: 'FER-002', nombre: 'Set Llaves Tubo (40 pzas)',           precio: 32000, stock: 8,  estado: 'atencion' },
+      { id: 'PNT-105', nombre: 'Pintura Látex Interior 20L (Blanco)', precio: 45000, stock: 2,  estado: 'critico'  },
+    ],
+
+    /* ----------------------------------------------------------
+       INICIALIZAR — carga datos de ejemplo solo la primera vez
+    ---------------------------------------------------------- */
+    inicializar() {
+      if (localStorage.getItem(this.CLAVE) === null) {
+        escribir(this.CLAVE, this.INICIALES);
+      }
+    },
+
+    /* ----------------------------------------------------------
+       LEER TODOS
+       BACKEND → GET /api/productos
+    ---------------------------------------------------------- */
+    todos() {
+      this.inicializar();
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       BUSCAR POR ID
+       BACKEND → GET /api/productos/:id
+    ---------------------------------------------------------- */
+    porId(id) {
+      return this.todos().find(p => p.id === id);
+    },
+
+    /* ----------------------------------------------------------
+       DESCONTAR STOCK (después de una venta)
+       BACKEND → PATCH /api/productos/:id/stock
+       Body: { cantidad }
+    ---------------------------------------------------------- */
+    descontarStock(id, cantidad) {
+      const todos   = this.todos();
+      const prod    = todos.find(p => p.id === id);
+      if (!prod) return null;
+
+      prod.stock    = Math.max(0, prod.stock - cantidad);
+      prod.estado   = calcularEstadoStock(prod.stock);
+      escribir(this.CLAVE, todos);
+      return prod;
+    },
+
+    /* ----------------------------------------------------------
+       DEVOLVER STOCK (cuando se anula una venta)
+       BACKEND → PATCH /api/productos/:id/stock
+       Body: { cantidad: -cantidad } (suma en lugar de restar)
+    ---------------------------------------------------------- */
+    devolverStock(id, cantidad) {
+      const todos = this.todos();
+      const prod  = todos.find(p => p.id === id);
+      if (!prod) return null;
+
+      prod.stock  = prod.stock + cantidad;
+      prod.estado = calcularEstadoStock(prod.stock);
+      escribir(this.CLAVE, todos);
+      return prod;
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR NUEVO PRODUCTO
+       BACKEND → POST /api/productos
+    ---------------------------------------------------------- */
+    guardar({ id, nombre, precio, stock }) {
+      const todos = this.todos();
+      const nuevo = { id, nombre, precio: Number(precio), stock: Number(stock), estado: calcularEstadoStock(Number(stock)) };
+      todos.push(nuevo);
+      escribir(this.CLAVE, todos);
+      return nuevo;
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: EMPLEADOS
+  ============================================================== */
+  const Empleados = {
+
+    CLAVE: 'vextra_empleados',
+
+    INICIALES: [
+      { id: 1, nombre: 'Lucía',    apellido: 'Martínez', rol: 'encargado',      tipoSueldo: 'fijo', sueldo: 320000, telefono: '+54 9 2262 45-1234', ingreso: '2023-03-15', avatarColor: 'linear-gradient(135deg,#a855f7,#7c3aed)' },
+      { id: 2, nombre: 'Rodrigo',  apellido: 'Sánchez',  rol: 'vendedor',       tipoSueldo: 'fijo', sueldo: 210000, telefono: '+54 9 2262 51-9988', ingreso: '2024-01-10', avatarColor: 'linear-gradient(135deg,#3478f6,#1849b8)' },
+      { id: 3, nombre: 'Valentina',apellido: 'López',    rol: 'administrativo', tipoSueldo: 'fijo', sueldo: 155000, telefono: '+54 9 2262 60-7762', ingreso: '2024-07-01', avatarColor: 'linear-gradient(135deg,#22c55e,#15803d)' },
+      { id: 4, nombre: 'Matías',   apellido: 'Herrera',  rol: 'deposito',       tipoSueldo: 'hora', valorHora: 1500, horasMes: 66, telefono: '+54 9 2262 33-5501', ingreso: '2025-02-20', avatarColor: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+    ],
+
+    inicializar() {
+      if (localStorage.getItem(this.CLAVE) === null) {
+        escribir(this.CLAVE, this.INICIALES);
+      }
+    },
+
+    /* ----------------------------------------------------------
+       LEER TODOS
+       BACKEND → GET /api/empleados
+    ---------------------------------------------------------- */
+    todos() {
+      this.inicializar();
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR (crear o editar según si tiene id existente)
+       BACKEND crear → POST /api/empleados
+       BACKEND editar → PUT /api/empleados/:id
+    ---------------------------------------------------------- */
+    guardar(datos) {
+      const todos = this.todos();
+      const existe = todos.findIndex(e => e.id === datos.id);
+
+      if (existe >= 0) {
+        todos[existe] = { ...todos[existe], ...datos };
+      } else {
+        datos.id = idUnico();
+        todos.push(datos);
+      }
+
+      escribir(this.CLAVE, todos);
+      return datos;
+    },
+
+    /* ----------------------------------------------------------
+       ELIMINAR
+       BACKEND → DELETE /api/empleados/:id
+    ---------------------------------------------------------- */
+    eliminar(id) {
+      const filtrados = this.todos().filter(e => e.id !== id);
+      escribir(this.CLAVE, filtrados);
+    },
+
+    /* ----------------------------------------------------------
+       COSTO TOTAL DE NÓMINA DEL MES
+       BACKEND → GET /api/empleados/nomina
+       Retorna: { totalFijos, totalHora, total }
+    ---------------------------------------------------------- */
+    costoNomina() {
+      const todos = this.todos();
+      const totalFijos = todos.filter(e => e.tipoSueldo === 'fijo').reduce((s, e) => s + e.sueldo, 0);
+      const totalHora  = todos.filter(e => e.tipoSueldo === 'hora').reduce((s, e) => s + (e.valorHora * e.horasMes), 0);
+      return { totalFijos, totalHora, total: totalFijos + totalHora };
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: RESUMEN GLOBAL DEL DASHBOARD
+     Combina movimientos manuales + ventas de inventario
+  ============================================================== */
+  const Dashboard = {
+
+    /* ----------------------------------------------------------
+       RESUMEN COMPLETO DEL MES ACTUAL
+       BACKEND → GET /api/dashboard/resumen
+       (el backend haría un JOIN de las dos tablas)
+    ---------------------------------------------------------- */
+    resumenMesActual() {
+      const hoy    = new Date();
+      const mesKey = mesAnioKey(hoy);
+
+      // Ingresos y gastos cargados manualmente
+      const resMovs = Movimientos.resumenMes(mesKey);
+
+      // Ventas del inventario (también son ingresos)
+      const totalVentasInventario = Ventas.totalMes(mesKey);
+
+      const ingresosTotales = resMovs.ingresos + totalVentasInventario;
+      const gastosTotales   = resMovs.gastos;
+      const balance         = ingresosTotales - gastosTotales;
+
+      return {
+        mes:                  mesAnioKey(hoy),
+        mesLabel:             mesAnioLabel(hoy),
+        ingresos:             ingresosTotales,
+        ingresosManual:       resMovs.ingresos,
+        ingresosInventario:   totalVentasInventario,
+        gastos:               gastosTotales,
+        balance,
+      };
+    },
+
+    /* ----------------------------------------------------------
+       DATOS PARA EL GRÁFICO (últimos 4 meses)
+       BACKEND → GET /api/dashboard/grafico?meses=4
+    ---------------------------------------------------------- */
+    datosGrafico(meses = 4) {
+      const historial = Movimientos.ultimosMeses(meses);
+
+      // Sumar ventas de inventario a los ingresos de cada mes
+      return historial.map(mes => {
+        const ventasMes = Ventas.totalMes(mes.key);
+        return {
+          ...mes,
+          ingresos: mes.ingresos + ventasMes,
+        };
+      });
+    },
+  };
+
+
+  /* ==============================================================
+     HELPER COMPARTIDO: calcular estado de stock
+  ============================================================== */
+  function calcularEstadoStock(stock) {
+    if (stock <= 0)  return 'critico';
+    if (stock <= 3)  return 'critico';
+    if (stock <= 10) return 'atencion';
+    return 'optimo';
+  }
+
+
+  /* ==============================================================
+     API PÚBLICA — lo que ven las páginas
+  ============================================================== */
+  return {
+    Movimientos,
+    Ventas,
+    Productos,
+    Empleados,
+    Dashboard,
+    calcularEstadoStock,
+
+    /* Resetear todo (útil para desarrollo/tests) */
+    resetearTodo() {
+      ['vextra_movimientos','vextra_ventas','vextra_productos','vextra_empleados']
+        .forEach(k => localStorage.removeItem(k));
+      console.log('[VEXTRADB] Base de datos local reseteada.');
+    },
+  };
+
+})();
+
+</script>
+</head>
+<body>
+
+  <aside class="sidebar" role="navigation">
+    <a href="dashboard.html" class="sidebar-logo"><img src="Logo_con_nombre.png" alt="VEXTRA"></a>
+    <span class="sidebar-section-label">Principal</span>
+    <nav class="nav-links">
+      <a href="dashboard.html"><span class="nav-icon">📊</span>Resumen del Mes</a>
+      <a href="inventario.html"><span class="nav-icon">📦</span>Mi Inventario</a>
+      <a href="marketing.html"><span class="nav-icon">🚀</span>Mis Campañas</a>
+      <a href="empleados.html" class="active" aria-current="page"><span class="nav-icon">👥</span>Empleados</a>
+    </nav>
+    <span class="sidebar-section-label">Acciones</span>
+    <nav class="nav-links">
+      <a href="dashboard.html"><span class="nav-icon">📈</span>Cargar Ingreso</a>
+      <a href="dashboard.html"><span class="nav-icon">📉</span>Cargar Gasto</a>
+    </nav>
+    <div class="sidebar-footer">
+      <nav class="nav-links">
+        <a href="iniciarsesion.html" class="nav-danger"><span class="nav-icon">🚪</span>Cerrar Sesión</a>
+      </nav>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="app-topbar" role="banner">
+      <div>
+        <h1>Gestión de Empleados 👥</h1>
+        <p class="topbar-greeting">Directorio del personal y costos de nómina</p>
+      </div>
+      <div class="topbar-meta">
+        <div class="topbar-badge" id="badge-mes">📅 —</div>
+      </div>
+    </header>
+
+    <main class="page-content" role="main">
+
+      <!-- PANEL NÓMINA -->
+      <section class="payroll-panel" aria-labelledby="payroll-heading">
+        <div class="payroll-panel-left">
+          <p class="payroll-panel-eyebrow">Costo de nómina</p>
+          <h2 id="payroll-heading" class="payroll-panel-title" id="total-display">$0</h2>
+          <p class="payroll-panel-desc">
+            Costo total del personal este mes. Registralo como gasto en el dashboard con un clic.
+          </p>
+        </div>
+        <div class="payroll-panel-right">
+          <div class="payroll-breakdown">
+            <div class="breakdown-row"><span class="breakdown-label">Sueldos fijos</span><span class="breakdown-val" id="bd-fijos">$0</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Sueldos por hora</span><span class="breakdown-val" id="bd-hora">$0</span></div>
+            <div class="breakdown-row breakdown-total"><span class="breakdown-label">Total nómina</span><span class="breakdown-val" id="bd-total">$0</span></div>
+          </div>
+          <button class="btn-sync" id="btn-registrar-nomina" onclick="registrarNominaComoGasto()">↓ Registrar como Gasto</button>
+        </div>
+      </section>
+
+      <!-- STATS -->
+      <section>
+        <div class="staff-stats">
+          <div class="stat-pill"><div class="stat-pill-icon stat-pill-icon--blue">👤</div><div><p class="stat-pill-label">Total empleados</p><p class="stat-pill-value" id="st-total">0</p></div></div>
+          <div class="stat-pill"><div class="stat-pill-icon stat-pill-icon--green">📋</div><div><p class="stat-pill-label">Sueldo fijo</p><p class="stat-pill-value" id="st-fijos">0</p></div></div>
+          <div class="stat-pill"><div class="stat-pill-icon stat-pill-icon--amber">🕐</div><div><p class="stat-pill-label">Por hora</p><p class="stat-pill-value" id="st-hora">0</p></div></div>
+          <div class="stat-pill"><div class="stat-pill-icon stat-pill-icon--purple">💼</div><div><p class="stat-pill-label">Roles distintos</p><p class="stat-pill-value" id="st-roles">0</p></div></div>
+        </div>
+      </section>
+
+      <!-- TOOLBAR -->
+      <div class="employees-header">
+        <div style="display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap">
+          <div class="search-box" style="max-width:280px;position:relative">
+            <span class="search-icon" style="position:absolute;left:var(--space-4);top:50%;transform:translateY(-50%);pointer-events:none;color:var(--color-text-tertiary);font-size:14px">🔍</span>
+            <input type="search" id="buscador" placeholder="Buscar empleado..." oninput="renderEmpleados()" style="font-family:var(--font-body);width:100%;padding:var(--space-3) var(--space-4) var(--space-3) var(--space-10);border:1.5px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);font-size:var(--text-sm);box-sizing:border-box">
+          </div>
+          <div class="filter-chips" role="group">
+            <button class="chip active" onclick="filtrarRol(this,'todos')">Todos</button>
+            <button class="chip" onclick="filtrarRol(this,'vendedor')">Vendedor</button>
+            <button class="chip" onclick="filtrarRol(this,'encargado')">Encargado</button>
+            <button class="chip" onclick="filtrarRol(this,'deposito')">Depósito</button>
+            <button class="chip" onclick="filtrarRol(this,'administrativo')">Administrativo</button>
+          </div>
+        </div>
+        <div class="employees-header-actions">
+          <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo Empleado</button>
+        </div>
+      </div>
+
+      <!-- GRID -->
+      <div class="employees-grid" id="employees-grid"></div>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="empty-state-icon">👥</div>
+        <h3>No hay empleados registrados</h3>
+        <p>Todavía no agregaste ningún empleado. Usá el botón de arriba para comenzar.</p>
+        <button class="btn btn-primary" style="margin-top:var(--space-5)" onclick="abrirModal()">+ Agregar primer empleado</button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL EMPLEADO -->
+  <div class="modal-overlay" id="modalEmp" role="dialog" aria-modal="true" aria-labelledby="me-title" onclick="cerrarSiAfuera(event)">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-header">
+        <h2 id="me-title">Agregar Empleado</h2>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form class="form-stack" id="form-emp" onsubmit="guardarEmpleado(event)" novalidate>
+        <p class="modal-section-title" style="margin-top:0;border-top:none;padding-top:0;font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-tertiary)">Datos personales</p>
+        <div class="form-row">
+          <div class="form-field"><label for="e-nombre">Nombre</label><input type="text" id="e-nombre" placeholder="Ej: Carlos" required></div>
+          <div class="form-field"><label for="e-apellido">Apellido</label><input type="text" id="e-apellido" placeholder="Ej: Pérez" required></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label for="e-tel">Teléfono</label><input type="tel" id="e-tel" placeholder="+54 9 11 ..."></div>
+          <div class="form-field"><label for="e-ingreso">Fecha de ingreso</label><input type="date" id="e-ingreso" required></div>
+        </div>
+        <p class="modal-section-title" style="font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-tertiary);border-top:1px solid var(--color-border);padding-top:var(--space-4);margin-top:var(--space-2)">Rol y remuneración</p>
+        <div class="form-row">
+          <div class="form-field">
+            <label for="e-rol">Rol / Puesto</label>
+            <select id="e-rol" required>
+              <option value="" disabled selected>Seleccioná...</option>
+              <option value="vendedor">Vendedor</option>
+              <option value="encargado">Encargado</option>
+              <option value="deposito">Depósito</option>
+              <option value="administrativo">Administrativo</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="e-tipo">Tipo de sueldo</label>
+            <select id="e-tipo" required onchange="toggleSueldo()">
+              <option value="" disabled selected>Seleccioná...</option>
+              <option value="fijo">Mensual fijo</option>
+              <option value="hora">Por hora</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field" id="campo-fijo">
+          <label for="e-sueldo">Sueldo mensual ($)</label>
+          <input type="number" id="e-sueldo" placeholder="Ej: 250000" min="0">
+        </div>
+        <div id="campo-hora" style="display:none">
+          <div class="form-row">
+            <div class="form-field"><label for="e-valor-hora">Valor por hora ($)</label><input type="number" id="e-valor-hora" placeholder="Ej: 1500" min="0"></div>
+            <div class="form-field"><label for="e-horas">Horas este mes</label><input type="number" id="e-horas" placeholder="Ej: 80" min="0"></div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" style="margin-top:var(--space-2)" id="btn-guardar-emp">Guardar Empleado</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAR ELIMINACIÓN -->
+  <div class="modal-overlay" id="modalEliminar" role="dialog" aria-modal="true" aria-labelledby="del-title" onclick="if(event.target===this) cerrarModalEliminar()">
+    <div class="modal-box" style="max-width:380px;text-align:center">
+      <div style="font-size:48px;margin-bottom:var(--space-4)">🗑️</div>
+      <h2 id="del-title" style="margin-bottom:var(--space-3);font-size:var(--text-xl)">Eliminar empleado</h2>
+      <p style="color:var(--color-text-secondary);font-size:var(--text-sm);line-height:var(--leading-relaxed);margin-bottom:var(--space-2)">
+        ¿Estás seguro que querés eliminar a
+      </p>
+      <p style="font-weight:700;font-size:var(--text-base);color:var(--color-text-primary);margin-bottom:var(--space-6)" id="delete-nombre">—</p>
+      <p style="color:var(--color-text-tertiary);font-size:var(--text-xs);margin-bottom:var(--space-6)">Esta acción no se puede deshacer.</p>
+      <div style="display:flex;gap:var(--space-3)">
+        <button class="btn btn-ghost" style="flex:1" onclick="cerrarModalEliminar()">Cancelar</button>
+        <button class="btn" id="btn-confirmar-eliminar" style="flex:1;background:var(--color-danger-500);color:white;border-color:var(--color-danger-500)">
+          Sí, eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .visually-hidden { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0 }
+    .search-box input:focus { outline:none;border-color:var(--color-brand-500);box-shadow:0 0 0 3px rgba(52,120,246,.12) }
+
+    /* Botón eliminar en tarjeta */
+    .employee-menu-btn--delete:hover {
+      background-color: var(--color-danger-50) !important;
+      border-color: var(--color-danger-200) !important;
+      color: var(--color-danger-600) !important;
+    }
+  </style>
+
+  <script>
+    let filtroRol  = 'todos';
+    let editandoId = null;
+
+    const ROL_LABELS = { vendedor:'Vendedor', encargado:'Encargado', deposito:'Depósito', administrativo:'Administrativo', otro:'Otro' };
+    const COLORES = [
+      'linear-gradient(135deg,#3478f6,#1849b8)',
+      'linear-gradient(135deg,#a855f7,#7c3aed)',
+      'linear-gradient(135deg,#22c55e,#15803d)',
+      'linear-gradient(135deg,#f59e0b,#d97706)',
+      'linear-gradient(135deg,#ef4444,#b91c1c)',
+      'linear-gradient(135deg,#0ea5e9,#0369a1)',
+    ];
+
+    /* ============================================================
+       INICIO
+    ============================================================ */
+    document.addEventListener('DOMContentLoaded', () => {
+      const hoy = new Date();
+      document.getElementById('badge-mes').textContent =
+        '📅 ' + hoy.toLocaleDateString('es-AR', { month:'long', year:'numeric' });
+      document.getElementById('e-ingreso').valueAsDate = new Date();
+      renderTodo();
+    });
+
+    function renderTodo() {
+      renderStats();
+      renderNomina();
+      renderEmpleados();
+    }
+
+    /* ============================================================
+       STATS — lee de VEXTRADB.Empleados
+    ============================================================ */
+    function renderStats() {
+      const todos = VEXTRADB.Empleados.todos();
+      /*
+        BACKEND: reemplazar por →
+        const todos = await fetch('/api/empleados').then(r => r.json());
+      */
+      document.getElementById('st-total').textContent = todos.length;
+      document.getElementById('st-fijos').textContent = todos.filter(e => e.tipoSueldo==='fijo').length;
+      document.getElementById('st-hora').textContent  = todos.filter(e => e.tipoSueldo==='hora').length;
+      document.getElementById('st-roles').textContent = new Set(todos.map(e => e.rol)).size;
+    }
+
+    /* ============================================================
+       NÓMINA
+    ============================================================ */
+    function renderNomina() {
+      const nomina = VEXTRADB.Empleados.costoNomina();
+      /*
+        BACKEND: reemplazar por →
+        const nomina = await fetch('/api/empleados/nomina').then(r => r.json());
+      */
+      document.getElementById('bd-fijos').textContent    = '$' + nomina.totalFijos.toLocaleString('es-AR');
+      document.getElementById('bd-hora').textContent     = '$' + nomina.totalHora.toLocaleString('es-AR');
+      document.getElementById('bd-total').textContent    = '$' + nomina.total.toLocaleString('es-AR');
+      document.getElementById('payroll-heading').textContent = '$' + nomina.total.toLocaleString('es-AR');
+
+      const btn = document.getElementById('btn-registrar-nomina');
+      btn.classList.remove('synced');
+      btn.innerHTML = '↓ Registrar como Gasto';
+      btn.disabled  = false;
+    }
+
+    function registrarNominaComoGasto() {
+      const nomina = VEXTRADB.Empleados.costoNomina();
+      const hoy    = new Date();
+      const fechaStr = hoy.toISOString().split('T')[0];
+
+      // ①  Registrar la nómina como gasto en VEXTRADB.Movimientos
+      VEXTRADB.Movimientos.guardar({
+        tipo:     'gasto',
+        monto:    nomina.total,
+        concepto: `Nómina ${hoy.toLocaleDateString('es-AR', { month:'long', year:'numeric' })}`,
+        fecha:    fechaStr,
+      });
+      /*
+        BACKEND: reemplazar por →
+        await fetch('/api/movimientos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo:'gasto', monto: nomina.total, concepto:'Nómina ...', fecha: fechaStr })
+        });
+      */
+
+      const btn = document.getElementById('btn-registrar-nomina');
+      btn.classList.add('synced');
+      btn.innerHTML = '✓ Registrado en el Dashboard';
+      btn.disabled  = true;
+    }
+
+    /* ============================================================
+       TARJETAS DE EMPLEADOS
+    ============================================================ */
+    function renderEmpleados() {
+      const todos    = VEXTRADB.Empleados.todos();
+      const busqueda = (document.getElementById('buscador').value || '').toLowerCase();
+      const grid     = document.getElementById('employees-grid');
+      const empty    = document.getElementById('empty-state');
+
+      const filtrados = todos.filter(e => {
+        const nombre = `${e.nombre} ${e.apellido}`.toLowerCase();
+        return nombre.includes(busqueda) && (filtroRol === 'todos' || e.rol === filtroRol);
+      });
+
+      if (filtrados.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'flex';
+        empty.style.flexDirection = 'column';
+        empty.style.alignItems = 'center';
+
+        // Mensaje distinto: sin empleados en total vs sin resultados de búsqueda
+        if (todos.length === 0) {
+          empty.querySelector('.empty-state-icon').textContent = '👥';
+          empty.querySelector('h3').textContent = 'No hay empleados registrados';
+          empty.querySelector('p').textContent  = 'Todavía no agregaste ningún empleado. Usá el botón de arriba para comenzar.';
+          empty.querySelector('.btn') && (empty.querySelector('.btn').style.display = 'inline-flex');
+        } else {
+          empty.querySelector('.empty-state-icon').textContent = '🔍';
+          empty.querySelector('h3').textContent = 'Sin resultados';
+          empty.querySelector('p').textContent  = 'No encontramos empleados que coincidan con tu búsqueda.';
+          empty.querySelector('.btn') && (empty.querySelector('.btn').style.display = 'none');
+        }
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.innerHTML = filtrados.map(tarjetaHTML).join('');
+    }
+
+    function tarjetaHTML(e) {
+      const iniciales  = `${e.nombre[0]}${e.apellido[0]}`.toUpperCase();
+      const costo      = e.tipoSueldo === 'fijo' ? e.sueldo : e.valorHora * e.horasMes;
+      const tipoLabel  = e.tipoSueldo === 'hora' ? `${e.horasMes}h × $${e.valorHora.toLocaleString('es-AR')}` : 'Sueldo fijo';
+      const ingreso    = new Date(e.ingreso + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' });
+      const antiguedad = calcAntiguedad(e.ingreso);
+
+      return `
+        <article class="employee-card" data-rol="${e.rol}">
+          <div class="employee-card-header">
+            <div class="employee-identity">
+              <div class="employee-avatar" style="background:${e.avatarColor}">${iniciales}</div>
+              <div>
+                <p class="employee-name">${e.nombre} ${e.apellido}</p>
+                <span class="employee-role-badge">${ROL_LABELS[e.rol]||e.rol}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:var(--space-2)">
+              <button class="employee-menu-btn" onclick="abrirModal(${e.id})" title="Editar empleado">✏️</button>
+              <button class="employee-menu-btn employee-menu-btn--delete" onclick="pedirEliminar(${e.id},'${e.nombre} ${e.apellido}')" title="Eliminar empleado">🗑</button>
+            </div>
+          </div>
+          <div class="employee-data">
+            <div class="employee-data-row"><span class="data-icon">📞</span><span class="data-label">Teléfono</span><span class="data-value">${e.telefono||'—'}</span></div>
+            <div class="employee-data-row"><span class="data-icon">📅</span><span class="data-label">Ingreso</span><span class="data-value">${ingreso}</span></div>
+            <div class="employee-data-row"><span class="data-icon">⏳</span><span class="data-label">Antigüedad</span><span class="data-value">${antiguedad}</span></div>
+          </div>
+          <div class="employee-card-divider"></div>
+          <div class="employee-salary-row">
+            <div><p class="salary-label">Costo este mes</p><p class="salary-type">${tipoLabel}</p></div>
+            <span class="salary-value">$${costo.toLocaleString('es-AR')}</span>
+          </div>
+        </article>`;
+    }
+
+    function filtrarRol(btn, rol) {
+      document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      filtroRol = rol;
+      renderEmpleados();
+    }
+
+    /* ============================================================
+       MODAL EMPLEADO
+    ============================================================ */
+    function abrirModal(id = null) {
+      editandoId = id;
+      const titulo = document.getElementById('me-title');
+
+      if (id) {
+        const e = VEXTRADB.Empleados.todos().find(x => x.id === id);
+        titulo.textContent = 'Editar Empleado';
+        document.getElementById('e-nombre').value   = e.nombre;
+        document.getElementById('e-apellido').value = e.apellido;
+        document.getElementById('e-tel').value      = e.telefono;
+        document.getElementById('e-ingreso').value  = e.ingreso;
+        document.getElementById('e-rol').value      = e.rol;
+        document.getElementById('e-tipo').value     = e.tipoSueldo;
+        toggleSueldo();
+        if (e.tipoSueldo === 'fijo') {
+          document.getElementById('e-sueldo').value = e.sueldo;
+        } else {
+          document.getElementById('e-valor-hora').value = e.valorHora;
+          document.getElementById('e-horas').value      = e.horasMes;
+        }
+      } else {
+        titulo.textContent = 'Agregar Empleado';
+        document.getElementById('form-emp').reset();
+        document.getElementById('e-ingreso').valueAsDate = new Date();
+        document.getElementById('campo-fijo').style.display = 'block';
+        document.getElementById('campo-hora').style.display = 'none';
+      }
+
+      document.getElementById('modalEmp').classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModal() {
+      document.getElementById('modalEmp').classList.remove('is-open');
+      document.body.style.overflow = '';
+      editandoId = null;
+    }
+
+    function cerrarSiAfuera(e) { if (e.target === e.currentTarget) cerrarModal(); }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+
+    function toggleSueldo() {
+      const tipo = document.getElementById('e-tipo').value;
+      document.getElementById('campo-fijo').style.display = tipo === 'fijo' ? 'block' : 'none';
+      document.getElementById('campo-hora').style.display = tipo === 'hora' ? 'block' : 'none';
+    }
+
+    function guardarEmpleado(e) {
+      e.preventDefault();
+      const tipo = document.getElementById('e-tipo').value;
+
+      const datos = {
+        id:          editandoId,
+        nombre:      document.getElementById('e-nombre').value.trim(),
+        apellido:    document.getElementById('e-apellido').value.trim(),
+        rol:         document.getElementById('e-rol').value,
+        tipoSueldo:  tipo,
+        telefono:    document.getElementById('e-tel').value.trim(),
+        ingreso:     document.getElementById('e-ingreso').value,
+        avatarColor: editandoId
+          ? VEXTRADB.Empleados.todos().find(x => x.id === editandoId)?.avatarColor
+          : COLORES[Math.floor(Math.random() * COLORES.length)],
+        ...(tipo === 'fijo'
+          ? { sueldo: Number(document.getElementById('e-sueldo').value) }
+          : { valorHora: Number(document.getElementById('e-valor-hora').value), horasMes: Number(document.getElementById('e-horas').value) }
+        ),
+      };
+
+      // ①  Guardar en VEXTRADB.Empleados
+      VEXTRADB.Empleados.guardar(datos);
+      /*
+        BACKEND: si editandoId existe →
+          await fetch(`/api/empleados/${editandoId}`, { method:'PUT', ... })
+        si es nuevo →
+          await fetch('/api/empleados', { method:'POST', ... })
+      */
+
+      cerrarModal();
+      renderTodo();
+    }
+
+    /* ============================================================
+       ELIMINAR EMPLEADO
+    ============================================================ */
+    function pedirEliminar(id, nombre) {
+      document.getElementById('delete-nombre').textContent = nombre;
+      document.getElementById('btn-confirmar-eliminar').onclick = () => ejecutarEliminar(id);
+      document.getElementById('modalEliminar').classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModalEliminar() {
+      document.getElementById('modalEliminar').classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+
+    function ejecutarEliminar(id) {
+      VEXTRADB.Empleados.eliminar(id);
+      /*
+        BACKEND: reemplazar por →
+        await fetch(`/api/empleados/${id}`, { method: 'DELETE' });
+      */
+      cerrarModalEliminar();
+      renderTodo();
+    }
+
+    /* ============================================================
+       UTILIDAD: antigüedad
+    ============================================================ */
+    function calcAntiguedad(fechaStr) {
+      const hoy    = new Date();
+      const inicio = new Date(fechaStr + 'T12:00:00');
+      const meses  = (hoy.getFullYear() - inicio.getFullYear()) * 12 + (hoy.getMonth() - inicio.getMonth());
+      if (meses < 1)  return 'Reciente';
+      if (meses < 12) return `${meses} mes${meses>1?'es':''}`;
+      const años = Math.floor(meses/12), resto = meses%12;
+      return resto > 0 ? `${años} año${años>1?'s':''} y ${resto} mes${resto>1?'es':''}` : `${años} año${años>1?'s':''}`;
+    }
+  </script>
+
+</body>
+</html>

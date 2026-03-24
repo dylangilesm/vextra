@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Control — VEXTRA</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <!-- ①  BASE DE DATOS LOCAL — se carga antes que todo -->
+  <script>
+/* === VEXTRA-DB INLINE === */
+/* ================================================================
+   VEXTRA — CAPA DE DATOS CENTRALIZADA (vextra-db.js)
+   ================================================================
+
+   Este archivo es el ÚNICO lugar que habla con el almacenamiento.
+   Todas las páginas importan funciones de acá.
+
+   CUANDO LLEGUE EL BACKEND:
+   Solo tenés que editar este archivo. Ninguna página cambia.
+   Cada función tiene marcado exactamente qué endpoint HTTP
+   reemplaza a cada bloque de localStorage.
+
+   ESTRUCTURA DE DATOS EN localStorage:
+   ┌─────────────────────────────────────────────────────────────┐
+   │  "vextra_movimientos"  →  [ ...movimientos ]                │
+   │  "vextra_ventas"       →  [ ...ventas ]                     │
+   │  "vextra_productos"    →  [ ...productos ]                  │
+   │  "vextra_empleados"    →  [ ...empleados ]                  │
+   └─────────────────────────────────────────────────────────────┘
+================================================================ */
+
+// Asignación a window para que sea accesible desde cualquier script de la página
+window.VEXTRADB = (() => {
+
+  /* --------------------------------------------------------------
+     HELPERS INTERNOS — no se exportan
+  -------------------------------------------------------------- */
+  function leer(clave) {
+    try {
+      return JSON.parse(localStorage.getItem(clave)) || [];
+    } catch {
+      console.error('[VEXTRADB] Error leyendo', clave);
+      return [];
+    }
+  }
+
+  function escribir(clave, datos) {
+    try {
+      localStorage.setItem(clave, JSON.stringify(datos));
+      return true;
+    } catch (e) {
+      // localStorage lleno (límite ~5MB) u otro error
+      console.error('[VEXTRADB] Error escribiendo', clave, e);
+      return false;
+    }
+  }
+
+  function idUnico() {
+    // Genera un ID numérico único basado en timestamp + random
+    // El backend reemplaza esto con el ID autoincremental de SQL
+    return Date.now() + Math.floor(Math.random() * 1000);
+  }
+
+  function mesAnioKey(fecha) {
+    // Devuelve "2026-02" para agrupar por mes
+    const d = fecha ? new Date(fecha) : new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function mesAnioLabel(fecha) {
+    const d = fecha ? new Date(fecha) : new Date();
+    return d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  }
+
+
+  /* ==============================================================
+     MÓDULO: MOVIMIENTOS
+     (ingresos y gastos manuales cargados desde el dashboard)
+  ============================================================== */
+  const Movimientos = {
+
+    /* Clave en localStorage */
+    CLAVE: 'vextra_movimientos',
+
+    /* ----------------------------------------------------------
+       LEER TODOS
+       BACKEND → GET /api/movimientos
+    ---------------------------------------------------------- */
+    todos() {
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       LEER POR MES  (ej: "2026-02")
+       BACKEND → GET /api/movimientos?mes=2026-02
+    ---------------------------------------------------------- */
+    delMes(mesAnio) {
+      const todos = this.todos();
+      return todos.filter(m => {
+        const d = new Date(m.fechaISO);
+        return mesAnioKey(d) === mesAnio;
+      });
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR NUEVO MOVIMIENTO
+       BACKEND → POST /api/movimientos
+       Body: { tipo, monto, concepto, fecha }
+    ---------------------------------------------------------- */
+    guardar({ tipo, monto, concepto, fecha }) {
+      const todos = this.todos();
+      const fechaObj = new Date(fecha + 'T12:00:00');
+
+      const nuevo = {
+        id:        idUnico(),
+        tipo,                          // "ingreso" | "gasto"
+        monto:     Number(monto),
+        concepto,
+        fecha:     fechaObj.toLocaleDateString('es-AR'),
+        fechaISO:  fechaObj.toISOString(),
+        mes:       mesAnioKey(fechaObj),
+        creadoEn:  new Date().toISOString(),
+      };
+
+      todos.push(nuevo);
+      escribir(this.CLAVE, todos);
+      return nuevo;
+    },
+
+    /* ----------------------------------------------------------
+       ELIMINAR  (soft delete)
+       BACKEND → DELETE /api/movimientos/:id
+    ---------------------------------------------------------- */
+    eliminar(id) {
+      const todos = this.todos().filter(m => m.id !== id);
+      escribir(this.CLAVE, todos);
+    },
+
+    /* ----------------------------------------------------------
+       CALCULAR RESUMEN DEL MES
+       BACKEND → GET /api/movimientos/resumen?mes=2026-02
+       Retorna: { ingresos, gastos, balance }
+    ---------------------------------------------------------- */
+    resumenMes(mesAnio) {
+      const movs = this.delMes(mesAnio);
+
+      const ingresos = movs
+        .filter(m => m.tipo === 'ingreso')
+        .reduce((s, m) => s + m.monto, 0);
+
+      const gastos = movs
+        .filter(m => m.tipo === 'gasto')
+        .reduce((s, m) => s + m.monto, 0);
+
+      return {
+        ingresos,
+        gastos,
+        balance: ingresos - gastos,
+        cantidad: movs.length,
+      };
+    },
+
+    /* ----------------------------------------------------------
+       ÚLTIMOS N MESES para el gráfico
+       BACKEND → GET /api/movimientos/historial?meses=4
+       Retorna array con { label, ingresos, gastos } por mes
+    ---------------------------------------------------------- */
+    ultimosMeses(n = 4) {
+      const hoy = new Date();
+      const resultado = [];
+
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+        const key   = mesAnioKey(d);
+        const label = d.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
+        const res   = this.resumenMes(key);
+        resultado.push({ label, key, ...res });
+      }
+
+      return resultado;
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: VENTAS
+     (ventas rápidas registradas desde el inventario)
+  ============================================================== */
+  const Ventas = {
+
+    CLAVE: 'vextra_ventas',
+
+    /* ----------------------------------------------------------
+       LEER TODAS
+       BACKEND → GET /api/ventas
+    ---------------------------------------------------------- */
+    todas() {
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       LEER DE UN DÍA  (fecha: Date object)
+       BACKEND → GET /api/ventas?fecha=2026-02-23
+    ---------------------------------------------------------- */
+    delDia(fecha) {
+      const fechaStr = fecha.toLocaleDateString('es-AR');
+      return this.todas().filter(v => v.fecha === fechaStr && !v.anulada);
+    },
+
+    /* ----------------------------------------------------------
+       LEER DEL MES ACTUAL (para sumar al dashboard)
+       BACKEND → GET /api/ventas?mes=2026-02
+    ---------------------------------------------------------- */
+    delMes(mesAnio) {
+      return this.todas().filter(v => {
+        const d = new Date(v.fechaISO);
+        return mesAnioKey(d) === mesAnio && !v.anulada;
+      });
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR NUEVA VENTA
+       BACKEND → POST /api/ventas
+       Body: { productoId, nombre, precio, cantidad, metodo, nota }
+    ---------------------------------------------------------- */
+    guardar({ productoId, nombre, precio, cantidad, metodo, nota }) {
+      const todas = this.todas();
+      const ahora = new Date();
+
+      const nueva = {
+        id:          idUnico(),
+        productoId,
+        nombre,
+        precio:      Number(precio),
+        cantidad:    Number(cantidad),
+        total:       Number(precio) * Number(cantidad),
+        metodo,
+        nota:        nota || '',
+        fecha:       ahora.toLocaleDateString('es-AR'),
+        fechaISO:    ahora.toISOString(),
+        hora:        ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+        mes:         mesAnioKey(ahora),
+        anulada:     false,
+        creadoEn:    ahora.toISOString(),
+      };
+
+      todas.push(nueva);
+      escribir(this.CLAVE, todas);
+      return nueva;
+    },
+
+    /* ----------------------------------------------------------
+       ANULAR VENTA (no se borra, queda para auditoría)
+       BACKEND → PATCH /api/ventas/:id/anular
+    ---------------------------------------------------------- */
+    anular(id) {
+      const todas = this.todas();
+      const venta = todas.find(v => v.id === id);
+      if (venta) {
+        venta.anulada   = true;
+        venta.anuladaEn = new Date().toISOString();
+        escribir(this.CLAVE, todas);
+      }
+      return venta;
+    },
+
+    /* ----------------------------------------------------------
+       TOTAL DE VENTAS DEL MES (en $ para sumarlo al dashboard)
+       BACKEND → GET /api/ventas/total?mes=2026-02
+    ---------------------------------------------------------- */
+    totalMes(mesAnio) {
+      return this.delMes(mesAnio).reduce((s, v) => s + v.total, 0);
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: PRODUCTOS / INVENTARIO
+  ============================================================== */
+  const Productos = {
+
+    CLAVE: 'vextra_productos',
+
+    /* Datos iniciales — se cargan solo la primera vez */
+    INICIALES: [
+      { id: 'FER-001', nombre: 'Taladro Percutor 750W',              precio: 85000, stock: 24, estado: 'optimo'   },
+      { id: 'FER-002', nombre: 'Set Llaves Tubo (40 pzas)',           precio: 32000, stock: 8,  estado: 'atencion' },
+      { id: 'PNT-105', nombre: 'Pintura Látex Interior 20L (Blanco)', precio: 45000, stock: 2,  estado: 'critico'  },
+    ],
+
+    /* ----------------------------------------------------------
+       INICIALIZAR — carga datos de ejemplo si no hay nada
+    ---------------------------------------------------------- */
+    inicializar() {
+      if (leer(this.CLAVE).length === 0) {
+        escribir(this.CLAVE, this.INICIALES);
+      }
+    },
+
+    /* ----------------------------------------------------------
+       LEER TODOS
+       BACKEND → GET /api/productos
+    ---------------------------------------------------------- */
+    todos() {
+      this.inicializar();
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       BUSCAR POR ID
+       BACKEND → GET /api/productos/:id
+    ---------------------------------------------------------- */
+    porId(id) {
+      return this.todos().find(p => p.id === id);
+    },
+
+    /* ----------------------------------------------------------
+       DESCONTAR STOCK (después de una venta)
+       BACKEND → PATCH /api/productos/:id/stock
+       Body: { cantidad }
+    ---------------------------------------------------------- */
+    descontarStock(id, cantidad) {
+      const todos   = this.todos();
+      const prod    = todos.find(p => p.id === id);
+      if (!prod) return null;
+
+      prod.stock    = Math.max(0, prod.stock - cantidad);
+      prod.estado   = calcularEstadoStock(prod.stock);
+      escribir(this.CLAVE, todos);
+      return prod;
+    },
+
+    /* ----------------------------------------------------------
+       DEVOLVER STOCK (cuando se anula una venta)
+       BACKEND → PATCH /api/productos/:id/stock
+       Body: { cantidad: -cantidad } (suma en lugar de restar)
+    ---------------------------------------------------------- */
+    devolverStock(id, cantidad) {
+      const todos = this.todos();
+      const prod  = todos.find(p => p.id === id);
+      if (!prod) return null;
+
+      prod.stock  = prod.stock + cantidad;
+      prod.estado = calcularEstadoStock(prod.stock);
+      escribir(this.CLAVE, todos);
+      return prod;
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR NUEVO PRODUCTO
+       BACKEND → POST /api/productos
+    ---------------------------------------------------------- */
+    guardar({ id, nombre, precio, stock }) {
+      const todos = this.todos();
+      const nuevo = { id, nombre, precio: Number(precio), stock: Number(stock), estado: calcularEstadoStock(Number(stock)) };
+      todos.push(nuevo);
+      escribir(this.CLAVE, todos);
+      return nuevo;
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: EMPLEADOS
+  ============================================================== */
+  const Empleados = {
+
+    CLAVE: 'vextra_empleados',
+
+    INICIALES: [
+      { id: 1, nombre: 'Lucía',    apellido: 'Martínez', rol: 'encargado',      tipoSueldo: 'fijo', sueldo: 320000, telefono: '+54 9 2262 45-1234', ingreso: '2023-03-15', avatarColor: 'linear-gradient(135deg,#a855f7,#7c3aed)' },
+      { id: 2, nombre: 'Rodrigo',  apellido: 'Sánchez',  rol: 'vendedor',       tipoSueldo: 'fijo', sueldo: 210000, telefono: '+54 9 2262 51-9988', ingreso: '2024-01-10', avatarColor: 'linear-gradient(135deg,#3478f6,#1849b8)' },
+      { id: 3, nombre: 'Valentina',apellido: 'López',    rol: 'administrativo', tipoSueldo: 'fijo', sueldo: 155000, telefono: '+54 9 2262 60-7762', ingreso: '2024-07-01', avatarColor: 'linear-gradient(135deg,#22c55e,#15803d)' },
+      { id: 4, nombre: 'Matías',   apellido: 'Herrera',  rol: 'deposito',       tipoSueldo: 'hora', valorHora: 1500, horasMes: 66, telefono: '+54 9 2262 33-5501', ingreso: '2025-02-20', avatarColor: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+    ],
+
+    inicializar() {
+      if (leer(this.CLAVE).length === 0) {
+        escribir(this.CLAVE, this.INICIALES);
+      }
+    },
+
+    /* ----------------------------------------------------------
+       LEER TODOS
+       BACKEND → GET /api/empleados
+    ---------------------------------------------------------- */
+    todos() {
+      this.inicializar();
+      return leer(this.CLAVE);
+    },
+
+    /* ----------------------------------------------------------
+       GUARDAR (crear o editar según si tiene id existente)
+       BACKEND crear → POST /api/empleados
+       BACKEND editar → PUT /api/empleados/:id
+    ---------------------------------------------------------- */
+    guardar(datos) {
+      const todos = this.todos();
+      const existe = todos.findIndex(e => e.id === datos.id);
+
+      if (existe >= 0) {
+        todos[existe] = { ...todos[existe], ...datos };
+      } else {
+        datos.id = idUnico();
+        todos.push(datos);
+      }
+
+      escribir(this.CLAVE, todos);
+      return datos;
+    },
+
+    /* ----------------------------------------------------------
+       ELIMINAR
+       BACKEND → DELETE /api/empleados/:id
+    ---------------------------------------------------------- */
+    eliminar(id) {
+      const filtrados = this.todos().filter(e => e.id !== id);
+      escribir(this.CLAVE, filtrados);
+    },
+
+    /* ----------------------------------------------------------
+       COSTO TOTAL DE NÓMINA DEL MES
+       BACKEND → GET /api/empleados/nomina
+       Retorna: { totalFijos, totalHora, total }
+    ---------------------------------------------------------- */
+    costoNomina() {
+      const todos = this.todos();
+      const totalFijos = todos.filter(e => e.tipoSueldo === 'fijo').reduce((s, e) => s + e.sueldo, 0);
+      const totalHora  = todos.filter(e => e.tipoSueldo === 'hora').reduce((s, e) => s + (e.valorHora * e.horasMes), 0);
+      return { totalFijos, totalHora, total: totalFijos + totalHora };
+    },
+  };
+
+
+  /* ==============================================================
+     MÓDULO: RESUMEN GLOBAL DEL DASHBOARD
+     Combina movimientos manuales + ventas de inventario
+  ============================================================== */
+  const Dashboard = {
+
+    /* ----------------------------------------------------------
+       RESUMEN COMPLETO DEL MES ACTUAL
+       BACKEND → GET /api/dashboard/resumen
+       (el backend haría un JOIN de las dos tablas)
+    ---------------------------------------------------------- */
+    resumenMesActual() {
+      const hoy    = new Date();
+      const mesKey = mesAnioKey(hoy);
+
+      // Ingresos y gastos cargados manualmente
+      const resMovs = Movimientos.resumenMes(mesKey);
+
+      // Ventas del inventario (también son ingresos)
+      const totalVentasInventario = Ventas.totalMes(mesKey);
+
+      const ingresosTotales = resMovs.ingresos + totalVentasInventario;
+      const gastosTotales   = resMovs.gastos;
+      const balance         = ingresosTotales - gastosTotales;
+
+      return {
+        mes:                  mesAnioKey(hoy),
+        mesLabel:             mesAnioLabel(hoy),
+        ingresos:             ingresosTotales,
+        ingresosManual:       resMovs.ingresos,
+        ingresosInventario:   totalVentasInventario,
+        gastos:               gastosTotales,
+        balance,
+      };
+    },
+
+    /* ----------------------------------------------------------
+       DATOS PARA EL GRÁFICO (últimos 4 meses)
+       BACKEND → GET /api/dashboard/grafico?meses=4
+    ---------------------------------------------------------- */
+    datosGrafico(meses = 4) {
+      const historial = Movimientos.ultimosMeses(meses);
+
+      // Sumar ventas de inventario a los ingresos de cada mes
+      return historial.map(mes => {
+        const ventasMes = Ventas.totalMes(mes.key);
+        return {
+          ...mes,
+          ingresos: mes.ingresos + ventasMes,
+        };
+      });
+    },
+  };
+
+
+  /* ==============================================================
+     HELPER COMPARTIDO: calcular estado de stock
+  ============================================================== */
+  function calcularEstadoStock(stock) {
+    if (stock <= 0)  return 'critico';
+    if (stock <= 3)  return 'critico';
+    if (stock <= 10) return 'atencion';
+    return 'optimo';
+  }
+
+
+  /* ==============================================================
+     API PÚBLICA — lo que ven las páginas
+  ============================================================== */
+  return {
+    Movimientos,
+    Ventas,
+    Productos,
+    Empleados,
+    Dashboard,
+    calcularEstadoStock,
+
+    /* Resetear todo (útil para desarrollo/tests) */
+    resetearTodo() {
+      ['vextra_movimientos','vextra_ventas','vextra_productos','vextra_empleados']
+        .forEach(k => localStorage.removeItem(k));
+      console.log('[VEXTRADB] Base de datos local reseteada.');
+    },
+  };
+
+})();
+
+</script>
+</head>
+<body>
+
+  <aside class="sidebar" role="navigation" aria-label="Navegación">
+    <a href="dashboard.html" class="sidebar-logo"><img src="Logo_con_nombre.png" alt="VEXTRA"></a>
+    <span class="sidebar-section-label">Principal</span>
+    <nav class="nav-links">
+      <a href="dashboard.html" class="active" aria-current="page"><span class="nav-icon">📊</span>Resumen del Mes</a>
+      <a href="inventario.html"><span class="nav-icon">📦</span>Mi Inventario</a>
+      <a href="marketing.html"><span class="nav-icon">🚀</span>Mis Campañas</a>
+      <a href="empleados.html"><span class="nav-icon">👥</span>Empleados</a>
+    </nav>
+    <span class="sidebar-section-label">Acciones</span>
+    <nav class="nav-links">
+      <a onclick="abrirModal('ingreso')" role="button" tabindex="0"><span class="nav-icon">📈</span>Cargar Ingreso</a>
+      <a onclick="abrirModal('gasto')"   role="button" tabindex="0"><span class="nav-icon">📉</span>Cargar Gasto</a>
+      <a href="ventas-diarias.html"><span class="nav-icon">🧾</span>Registro de Ventas</a>
+    </nav>
+    <div class="sidebar-footer">
+      <nav class="nav-links">
+        <a href="iniciarsesion.html" class="nav-danger"><span class="nav-icon">🚪</span>Cerrar Sesión</a>
+      </nav>
+    </div>
+  </aside>
+
+  <div class="app-main">
+
+    <header class="app-topbar" role="banner">
+      <div>
+        <h1>Hola, empresa 👋</h1>
+        <p class="topbar-greeting">Así van tus números este mes</p>
+      </div>
+      <div class="topbar-meta">
+        <!-- ②  BADGE DE MES — se actualiza desde JS -->
+        <div class="topbar-badge" id="badge-mes">📅 —</div>
+        <button class="btn btn-primary" onclick="abrirModal('ingreso')">+ Registrar</button>
+      </div>
+    </header>
+
+    <main class="page-content" role="main">
+
+      <!-- KPIs — ③ los valores los pone renderKPIs() -->
+      <section aria-labelledby="kpi-heading">
+        <h2 id="kpi-heading" class="visually-hidden">Resumen financiero del mes</h2>
+        <div class="kpi-grid">
+
+          <article class="kpi-card kpi-card--income">
+            <div class="kpi-header">
+              <span class="kpi-label">Ingresos totales</span>
+              <div class="kpi-icon">📈</div>
+            </div>
+            <p class="kpi-value" id="kpi-ingresos">$0</p>
+            <span class="kpi-trend kpi-trend--up" id="kpi-ingresos-sub">Este mes</span>
+          </article>
+
+          <article class="kpi-card kpi-card--expense">
+            <div class="kpi-header">
+              <span class="kpi-label">Gastos</span>
+              <div class="kpi-icon">📉</div>
+            </div>
+            <p class="kpi-value" id="kpi-gastos">$0</p>
+            <span class="kpi-trend kpi-trend--down" id="kpi-gastos-sub">Este mes</span>
+          </article>
+
+          <article class="kpi-card kpi-card--balance">
+            <div class="kpi-header">
+              <span class="kpi-label">Balance neto</span>
+              <div class="kpi-icon">💰</div>
+            </div>
+            <p class="kpi-value" id="kpi-balance">$0</p>
+            <span class="kpi-trend" id="kpi-balance-trend">Este mes</span>
+          </article>
+
+        </div>
+      </section>
+
+      <!-- ÚLTIMOS MOVIMIENTOS -->
+      <section class="chart-card" style="margin-bottom:var(--space-6)" aria-labelledby="movs-heading">
+        <div class="chart-card-header">
+          <h2 id="movs-heading">Últimos movimientos</h2>
+          <a href="ventas-diarias.html" class="btn btn-ghost" style="font-size:var(--text-sm)">Ver ventas →</a>
+        </div>
+        <!-- ④  Se rellena con renderUltimosMovimientos() -->
+        <div id="lista-movimientos">
+          <p style="text-align:center;padding:var(--space-8);color:var(--color-text-tertiary);font-size:var(--text-sm)">
+            Aún no hay movimientos este mes.<br>Usá "+ Registrar" para agregar uno.
+          </p>
+        </div>
+      </section>
+
+      <!-- GRÁFICO -->
+      <section class="chart-card" aria-labelledby="chart-heading">
+        <div class="chart-card-header">
+          <h2 id="chart-heading">Evolución mensual</h2>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--vx-green)"></div>Ingresos</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--color-danger-400)"></div>Gastos</div>
+          </div>
+        </div>
+        <div class="chart-container" style="height:240px">
+          <canvas id="ventasChart" aria-label="Gráfico de evolución mensual"></canvas>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <button class="fab" onclick="abrirModal('ingreso')" aria-label="Nuevo registro" title="Nuevo registro">+</button>
+
+  <!-- MODAL REGISTRAR MOVIMIENTO -->
+  <div class="modal-overlay" id="modalCarga" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick="cerrarAlClickAfuera(event)">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-title">Registrar Movimiento</h2>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form class="form-stack" onsubmit="guardarMovimiento(event)" novalidate>
+
+        <div class="form-field">
+          <label for="tipoMovimiento">Tipo de Operación</label>
+          <select id="tipoMovimiento" required>
+            <option value="" disabled selected>Seleccioná una opción...</option>
+            <option value="ingreso">📈 Ingreso (Venta / Cobro)</option>
+            <option value="gasto">📉 Gasto (Compra / Pago)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="monto">Monto ($)</label>
+            <input type="number" id="monto" placeholder="Ej: 15000" min="1" required>
+          </div>
+          <div class="form-field">
+            <label for="fechaMovimiento">Fecha</label>
+            <input type="date" id="fechaMovimiento" required>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="concepto">Concepto / Detalle</label>
+          <input type="text" id="concepto" placeholder="Ej: Pago proveedor pinturas" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" style="margin-top:var(--space-2)" id="btn-guardar-mov">
+          Guardar Registro
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    .visually-hidden { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0 }
+
+    /* Lista de movimientos */
+    .mov-list { display:flex;flex-direction:column }
+    .mov-row { display:flex;align-items:center;justify-content:space-between;padding:var(--space-4) var(--space-6);border-bottom:1px solid var(--color-border);font-size:var(--text-sm);gap:var(--space-4) }
+    .mov-row:last-child { border-bottom:none }
+    .mov-row:hover { background:var(--color-neutral-50) }
+    .mov-icon { width:32px;height:32px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0 }
+    .mov-icon--ingreso { background:var(--color-success-50) }
+    .mov-icon--gasto   { background:var(--color-danger-50)  }
+    .mov-concepto { flex:1;font-weight:500;color:var(--color-text-primary) }
+    .mov-fecha { color:var(--color-text-tertiary);font-size:var(--text-xs);white-space:nowrap }
+    .mov-monto--ingreso { font-family:var(--font-display);font-weight:700;color:var(--color-success-600) }
+    .mov-monto--gasto   { font-family:var(--font-display);font-weight:700;color:var(--color-danger-600)  }
+    .btn-mov-del { background:none;border:none;color:var(--color-text-tertiary);cursor:pointer;font-size:14px;padding:4px;border-radius:4px;transition:color 0.15s }
+    .btn-mov-del:hover { color:var(--color-danger-500) }
+  </style>
+
+  <script>
+    let chartInstance = null;
+
+    /* ============================================================
+       ⑤  RENDER PRINCIPAL
+       Se llama al cargar la página y después de cada cambio.
+    ============================================================ */
+    function renderDashboard() {
+      // Mes actual en formato "2026-02"
+      const hoy    = new Date();
+      const mesKey = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+      const mesLabel = hoy.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+      document.getElementById('badge-mes').textContent =
+        '📅 ' + hoy.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+      /* ⑥  Datos del mes desde la DB */
+      const resumen = VEXTRADB.Dashboard.resumenMesActual();
+      renderKPIs(resumen);
+      renderUltimosMovimientos(mesKey);
+      renderGrafico();
+    }
+
+    /* ============================================================
+       KPIs
+    ============================================================ */
+    function renderKPIs(resumen) {
+      document.getElementById('kpi-ingresos').textContent = '$' + resumen.ingresos.toLocaleString('es-AR');
+      document.getElementById('kpi-gastos').textContent   = '$' + resumen.gastos.toLocaleString('es-AR');
+      document.getElementById('kpi-balance').textContent  = '$' + Math.abs(resumen.balance).toLocaleString('es-AR');
+
+      // Sub-labels descriptivos
+      const partes = [];
+      if (resumen.ingresosManual > 0)      partes.push(`$${resumen.ingresosManual.toLocaleString('es-AR')} manual`);
+      if (resumen.ingresosInventario > 0)  partes.push(`$${resumen.ingresosInventario.toLocaleString('es-AR')} inventario`);
+      document.getElementById('kpi-ingresos-sub').textContent = partes.join(' + ') || 'Sin movimientos aún';
+
+      // Balance: color según positivo/negativo
+      const balEl    = document.getElementById('kpi-balance');
+      const trendEl  = document.getElementById('kpi-balance-trend');
+      if (resumen.balance >= 0) {
+        balEl.style.color    = 'var(--color-brand-600)';
+        trendEl.className    = 'kpi-trend kpi-trend--up';
+        trendEl.textContent  = '↑ A favor';
+      } else {
+        balEl.style.color    = 'var(--color-danger-600)';
+        trendEl.className    = 'kpi-trend kpi-trend--down';
+        trendEl.textContent  = '↓ En rojo';
+      }
+    }
+
+    /* ============================================================
+       LISTA DE ÚLTIMOS MOVIMIENTOS
+    ============================================================ */
+    function renderUltimosMovimientos(mesKey) {
+      const container  = document.getElementById('lista-movimientos');
+
+      // Movimientos manuales del mes
+      const movsMes  = VEXTRADB.Movimientos.delMes(mesKey);
+      // Ventas del inventario del mes (mostramos las últimas)
+      const ventasMes = VEXTRADB.Ventas.delMes(mesKey);
+
+      // Combinar y ordenar por fecha descendente
+      const todos = [
+        ...movsMes.map(m => ({ ...m, _origen: 'manual' })),
+        ...ventasMes.map(v => ({
+          id: v.id, tipo: 'ingreso',
+          concepto: `Venta: ${v.nombre} (×${v.cantidad})`,
+          monto: v.total, fecha: v.fecha, fechaISO: v.fechaISO,
+          _origen: 'venta',
+        })),
+      ].sort((a, b) => new Date(b.fechaISO) - new Date(a.fechaISO))
+       .slice(0, 10); // solo últimos 10
+
+      if (todos.length === 0) {
+        container.innerHTML = `
+          <p style="text-align:center;padding:var(--space-8);color:var(--color-text-tertiary);font-size:var(--text-sm)">
+            Aún no hay movimientos este mes. Usá "+ Registrar" para agregar uno.
+          </p>`;
+        return;
+      }
+
+      container.innerHTML = `<div class="mov-list">
+        ${todos.map(m => `
+          <div class="mov-row">
+            <div class="mov-icon mov-icon--${m.tipo}">${m.tipo === 'ingreso' ? '📈' : '📉'}</div>
+            <span class="mov-concepto">${m.concepto}</span>
+            <span class="mov-fecha">${m.fecha}</span>
+            <span class="mov-monto--${m.tipo}">
+              ${m.tipo === 'ingreso' ? '+' : '-'}$${m.monto.toLocaleString('es-AR')}
+            </span>
+            ${m._origen === 'manual' ? `
+              <button class="btn-mov-del" onclick="eliminarMovimiento(${m.id})" title="Eliminar">🗑</button>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    function eliminarMovimiento(id) {
+      if (!confirm('¿Eliminar este movimiento?')) return;
+      VEXTRADB.Movimientos.eliminar(id);
+      renderDashboard();
+    }
+
+    /* ============================================================
+       GRÁFICO
+    ============================================================ */
+    function renderGrafico() {
+      const ctx = document.getElementById('ventasChart');
+      if (!ctx || typeof Chart === 'undefined') return;
+
+      // ⑦  Datos reales de los últimos 4 meses
+      const datos   = VEXTRADB.Dashboard.datosGrafico(4);
+      const labels  = datos.map(d => d.label);
+      const ingresos = datos.map(d => d.ingresos);
+      const gastos   = datos.map(d => d.gastos);
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Ingresos', data: ingresos, backgroundColor: 'rgba(38,98,71,0.85)', borderRadius: 6, borderSkipped: false },
+            { label: 'Gastos',   data: gastos,   backgroundColor: 'rgba(239,68,68,0.6)',   borderRadius: 6, borderSkipped: false },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(4,27,16,0.95)', padding: 12, cornerRadius: 8,
+              titleFont: { family: 'Outfit,DM Sans,sans-serif', size: 13 },
+              bodyFont:  { family: 'DM Sans,sans-serif', size: 13 },
+              callbacks: { label: c => ` ${c.dataset.label}: $${c.parsed.y.toLocaleString('es-AR')}` }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, border: { display: false }, ticks: { color: '#94a3b8', font: { family: 'DM Sans,sans-serif', size: 12 } } },
+            y: { grid: { color: 'rgba(38,98,71,0.1)' }, border: { display: false },
+                 ticks: { color: '#94a3b8', font: { family: 'DM Sans,sans-serif', size: 12 }, callback: v => '$' + (v/1000).toFixed(0) + 'K' } }
+          }
+        }
+      });
+    }
+
+    /* ============================================================
+       MODAL
+    ============================================================ */
+    function abrirModal(tipo) {
+      document.getElementById('fechaMovimiento').valueAsDate = new Date();
+      if (tipo) document.getElementById('tipoMovimiento').value = tipo;
+      document.getElementById('modalCarga').classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModal() {
+      document.getElementById('modalCarga').classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+
+    function cerrarAlClickAfuera(e) { if (e.target === e.currentTarget) cerrarModal(); }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+
+    /* ============================================================
+       ⑧  GUARDAR MOVIMIENTO — usa VEXTRADB, no localStorage directo
+    ============================================================ */
+    function guardarMovimiento(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-guardar-mov');
+
+      // Leer formulario
+      const datos = {
+        tipo:     document.getElementById('tipoMovimiento').value,
+        monto:    document.getElementById('monto').value,
+        concepto: document.getElementById('concepto').value,
+        fecha:    document.getElementById('fechaMovimiento').value,
+      };
+
+      // ⑨  Guardar en la DB local (1 línea — fácil de reemplazar)
+      VEXTRADB.Movimientos.guardar(datos);
+      /*
+        CUANDO LLEGUE EL BACKEND, reemplazá esa línea por:
+        ──────────────────────────────────────────────────
+        await fetch('/api/movimientos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datos)
+        });
+        ──────────────────────────────────────────────────
+      */
+
+      // Feedback visual
+      btn.textContent = '✓ Guardado';
+      btn.disabled    = true;
+      btn.style.background = 'var(--color-success-600)';
+
+      setTimeout(() => {
+        cerrarModal();
+        btn.textContent = 'Guardar Registro';
+        btn.disabled    = false;
+        btn.style.background = '';
+        e.target.reset();
+
+        // ⑩  Re-renderizar el dashboard con los nuevos datos
+        renderDashboard();
+      }, 900);
+    }
+
+    /* ============================================================
+       INICIO
+    ============================================================ */
+    document.addEventListener('DOMContentLoaded', renderDashboard);
+  </script>
+
+</body>
+</html>
