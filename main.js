@@ -81,10 +81,13 @@
   reveals.forEach(function(el) { observer.observe(el); });
 })();
 
-// ─── FORM VALIDATION ─────────────────────────────────
+// ─── FORM VALIDATION + ENVÍO A GOOGLE SHEETS ─────────
 (function() {
   var form = document.getElementById('contacto-form');
   if (!form) return;
+
+  // URL del script de Google Apps Script
+  var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPEtOrjPGDTEfvGmVB0Kp50JTxZD_5NW8I5TkP5WeY_qT1uwmTgfn99wg1lqxEvrKQ/exec';
 
   function setError(inputId, errorId, msg) {
     var input = document.getElementById(inputId);
@@ -111,7 +114,7 @@
     var email   = document.getElementById('email');
     var mensaje = document.getElementById('mensaje');
 
-    // Nombre
+    // Validar nombre
     if (!nombre || nombre.value.trim().length < 2) {
       setError('nombre', 'error-nombre', 'Por favor ingresá tu nombre.');
       valid = false;
@@ -119,7 +122,7 @@
       setError('nombre', 'error-nombre', '');
     }
 
-    // Email
+    // Validar email
     if (!email || !validateEmail(email.value.trim())) {
       setError('email', 'error-email', 'Ingresá un correo electrónico válido.');
       valid = false;
@@ -127,7 +130,7 @@
       setError('email', 'error-email', '');
     }
 
-    // Mensaje
+    // Validar mensaje
     if (!mensaje || mensaje.value.trim().length < 10) {
       setError('mensaje', 'error-mensaje', 'Contanos un poco sobre tu negocio.');
       valid = false;
@@ -135,27 +138,51 @@
       setError('mensaje', 'error-mensaje', '');
     }
 
-    if (valid) {
-      // Simular envío exitoso
-      var submitBtn = form.querySelector('button[type="submit"]');
-      var successEl = document.getElementById('form-success');
+    if (!valid) return;
 
-      submitBtn.textContent = 'Enviando...';
-      submitBtn.disabled = true;
+    // ── Envío real a Google Sheets ──────────────────────
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var successEl = document.getElementById('form-success');
 
-      setTimeout(function() {
-        form.reset();
-        submitBtn.textContent = 'Agendar diagnóstico gratuito';
-        submitBtn.disabled = false;
-        if (successEl) {
-          successEl.hidden = false;
-          setTimeout(function() { successEl.hidden = true; }, 6000);
-        }
-      }, 1200);
-    }
+    submitBtn.textContent = 'Enviando...';
+    submitBtn.disabled = true;
+
+    var datos = {
+      nombre:   nombre.value.trim(),
+      empresa:  (document.getElementById('empresa')  || {}).value || '',
+      email:    email.value.trim(),
+      telefono: (document.getElementById('telefono') || {}).value || '',
+      mensaje:  mensaje.value.trim()
+    };
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode:   'no-cors', // Google Apps Script requiere no-cors
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    })
+    .then(function() {
+      // Con no-cors no podemos leer la respuesta, pero si no hay error el envío fue exitoso
+      form.reset();
+      submitBtn.textContent = 'Agendar diagnóstico gratuito';
+      submitBtn.disabled = false;
+      if (successEl) {
+        successEl.hidden = false;
+        setTimeout(function() { successEl.hidden = true; }, 6000);
+      }
+    })
+    .catch(function() {
+      // Error de red
+      submitBtn.textContent = 'Agendar diagnóstico gratuito';
+      submitBtn.disabled = false;
+      if (successEl) {
+        successEl.textContent = '⚠ Hubo un problema al enviar. Intentá de nuevo o escribinos directo a serviciosdigitales@vextraar.com';
+        successEl.hidden = false;
+      }
+    });
   });
 
-  // Clear errors on input
+  // Limpiar errores al escribir
   form.querySelectorAll('input, textarea').forEach(function(field) {
     field.addEventListener('input', function() {
       this.classList.remove('error');
