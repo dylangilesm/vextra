@@ -1184,6 +1184,7 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
   transition: var(--transition);
   outline: none;
   -webkit-appearance: none;
+  appearance: none
 }
 .form-field input::placeholder,
 .form-field textarea::placeholder { color: rgba(156,163,175,0.5); }
