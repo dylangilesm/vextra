@@ -216,7 +216,7 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
   flex-shrink: 0;
 }
 .nav-logo-img {
-  height: 140px;
+  height: 36px;
   width: auto;
   display: block;
   /* Logo PNG has black background so we invert it to show on dark */
@@ -750,11 +750,8 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
   border-bottom: 1px solid rgba(38,98,71,0.12);
   margin-bottom: 4px;
 }
-.mock-logo-v {
-  height: auto; 
-  width: 200px;
-
-}
+.mock-logo-v { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--green); }
+.mock-logo-x { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--off-white); }
 
 .mock-section-label {
   font-size: 0.5rem;
@@ -1187,7 +1184,6 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
   transition: var(--transition);
   outline: none;
   -webkit-appearance: none;
-   appearance: none;
 }
 .form-field input::placeholder,
 .form-field textarea::placeholder { color: rgba(156,163,175,0.5); }
@@ -1253,11 +1249,6 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
   background: var(--dark);
   border-top: 1px solid rgba(38,98,71,0.15);
 }
-.footer-logo-img { 
-  height: auto;
-  width: 180px;
-  left: 24px;
-}
 .footer-inner {
   display: flex;
   justify-content: space-between;
@@ -1315,7 +1306,28 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
 
 /* Tablet / Mobile */
 @media (max-width: 768px) {
-  :root { --nav-h: 64px; }
+  :root { --nav-h: 60px; }
+
+  /* Nav: logo izquierda, hamburger derecha — sin botón login */
+  .nav {
+    justify-content: space-between;
+    gap: 0;
+  }
+  .nav-logo {
+    flex: 0 0 auto;
+  }
+  .nav-logo-img {
+    height: 28px;
+  }
+  /* Ocultar el botón de login en el nav en mobile — aparece en la sección contacto */
+  .btn-login {
+    display: none !important;
+  }
+  /* Solo mostrar el hamburger en nav-actions */
+  .nav-actions {
+    gap: 0;
+    flex-shrink: 0;
+  }
 
   .nav-links {
     position: fixed;
@@ -1333,8 +1345,20 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
     z-index: 99;
   }
   .nav-links.open {
-    max-height: 500px;
+    max-height: 520px;
     padding: 16px 0 24px;
+  }
+  /* Agregar el link de login dentro del menú hamburguesa */
+  .nav-login-mobile {
+    border-top: 1px solid rgba(38,98,71,0.2);
+    margin-top: 8px;
+    padding-top: 8px;
+    width: 100%;
+    text-align: center;
+  }
+  .nav-link--login {
+    color: var(--green) !important;
+    font-weight: 500;
   }
   .nav-links li { width: 100%; text-align: center; }
   .nav-link {
@@ -1348,7 +1372,24 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
   .hamburger { display: flex; }
 
   .hero-content { max-width: 100%; }
-  .hero-stats { gap: 20px; }
+
+  /* Stats: los 3 en una sola fila */
+  .hero-stats {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+  }
+  .stat {
+    flex: 1;
+    align-items: center;
+    text-align: center;
+    padding: 0 8px;
+    border-right: 1px solid rgba(242,242,242,0.12);
+  }
+  .stat:last-child { border-right: none; }
   .stat-div { display: none; }
 
   .pilares-list { grid-template-columns: 1fr; }
@@ -1379,7 +1420,8 @@ p  { font-size: clamp(0.95rem, 1.4vw, 1.05rem); line-height: 1.75; color: var(--
 @media (max-width: 480px) {
   .hero-ctas { flex-direction: column; }
   .hero-ctas .btn { width: 100%; justify-content: center; }
-  .hero-stats .stat-num { font-size: 1.5rem; }
+  .stat-num { font-size: 1.3rem !important; }
+  .stat-label { font-size: 0.68rem; }
   .mockup-sidebar { width: 80px; }
   .s-item { font-size: 0.58rem; padding: 6px; }
 }
